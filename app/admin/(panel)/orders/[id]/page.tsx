@@ -65,6 +65,13 @@ export default async function AdminOrder({ params, searchParams }: { params: Pro
             <p className="pt-1 text-xs text-muted">Delivery: {o.deliveryMethod}{o.deliveryAddress ? ` · ${o.deliveryAddress}, ${o.deliveryCity}, ${o.deliveryState}` : ""}</p>
           </section>
 
+          <section className="card space-y-2 p-5 text-sm"><h2 className="font-display text-lg font-bold text-navy">Documents</h2><ul className="space-y-1.5 font-medium text-brand">
+            <li><a className="hover:underline" href={`/api/documents/invoice/${o.orderNumber}`} target="_blank" rel="noopener">Invoice (PDF)</a></li><li><a className="hover:underline" href={`/api/documents/quotation/${o.orderNumber}`} target="_blank" rel="noopener">Quotation (PDF)</a></li><li><a className="hover:underline" href={`/api/documents/statement/${o.orderNumber}`} target="_blank" rel="noopener">Payment statement (PDF)</a></li>
+            {o.paymentMode === "INSTALLMENT" && <li><a className="hover:underline" href={`/api/documents/installment/${o.orderNumber}`} target="_blank" rel="noopener">Installment statement (PDF)</a></li>}
+            {o.items.some((i) => i.name) && <li><a className="hover:underline" href={`/api/documents/reservation/${o.orderNumber}`} target="_blank" rel="noopener">Reservation confirmation (vehicle orders)</a></li>}
+            {o.payments.filter((x) => x.status === "SUCCESS").map((x) => <li key={x.id}><a className="hover:underline" href={`/api/documents/receipt/${x.id}`} target="_blank" rel="noopener">Receipt {x.reference}</a></li>)}
+          </ul></section>
+
           {canEdit && nexts.length > 0 && (
             <form action={transitionOrderAction} className="card space-y-3 p-5">
               <h2 className="font-display text-lg font-bold text-navy">Update status</h2>

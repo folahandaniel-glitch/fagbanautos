@@ -44,4 +44,4 @@ The seed writes one-time staff passwords to `.seed-credentials.txt` (git-ignored
 
 ## Documentation
 
-`docs/`: DEPLOYMENT, DATABASE, ENVIRONMENT, ADMIN_GUIDE, SECURITY, PRICING, ASSUMPTIONS, MANUAL_QA.
+`docs/`: DEPLOYMENT, DATABASE, ENVIRONMENT, ADMIN_GUIDE, SECURITY, PRICING, ASSUMPTIONS, MANUAL_QA, LEGAL_REVIEW.

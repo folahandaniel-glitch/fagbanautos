@@ -29,6 +29,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
+  // PDF fonts and the logo are read from disk at runtime; make sure they are bundled with the function on Vercel.
+  outputFileTracingIncludes: { "/api/documents/**": ["./lib/pdf/fonts/**", "./public/brand/logo.png"] },
   serverExternalPackages: ["@node-rs/argon2", "exceljs", "@prisma/client"],
   async headers() {
     return [

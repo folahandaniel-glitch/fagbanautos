@@ -27,6 +27,7 @@ export const SETTING_DEFS: Record<string, SettingDef> = {
   "contact.address": { value: "Address to be confirmed by FAGDAN", group: "general", label: "Business address" },
   "contact.hours": { value: "Mon-Sat 8:00am - 6:00pm", group: "general", label: "Opening hours" },
   "legal.entityName": { value: "FAGDAN Automotive Group (legal entity to be confirmed)", group: "general", label: "Legal entity" },
+  "legal.tin": { value: "", group: "general", label: "Tax identification number (TIN) shown on invoices" },
   "legal.rcNumber": { value: "", group: "general", label: "RC number" },
   "social.facebook": { value: "", group: "social", label: "Facebook URL" },
   "social.instagram": { value: "", group: "social", label: "Instagram URL" },

@@ -64,7 +64,7 @@ export default async function AccountPage() {
       </div>
       {(bookings.length > 0 || imports.length > 0) && (
         <div className="mt-5 grid gap-5 md:grid-cols-2">
-          {bookings.length > 0 && <section className="card p-5"><h2 className="font-display text-lg font-bold text-navy">Service bookings</h2><ul className="mt-2 space-y-2 text-sm">{bookings.map((b) => <li key={b.id}>{b.service.name} · {b.slotStart.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })} · <span className="chip">{b.status}</span></li>)}</ul></section>}
+          {bookings.length > 0 && <section className="card p-5"><h2 className="font-display text-lg font-bold text-navy">Service bookings</h2><ul className="mt-2 space-y-2 text-sm">{bookings.map((b) => <li key={b.id}>{b.service.name} · {b.slotStart.toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" })} · <span className="chip">{b.status}</span> · <a className="font-semibold text-brand hover:underline" href={`/api/documents/booking/${b.id}`} target="_blank" rel="noopener">Confirmation PDF</a></li>)}</ul></section>}
           {imports.length > 0 && <section className="card p-5"><h2 className="font-display text-lg font-bold text-navy">Import cases</h2><ul className="mt-2 space-y-2 text-sm">{imports.map((c) => <li key={c.id}>{c.caseNumber} · {c.make} {c.model} · <span className="chip">{c.status.replace(/_/g, " ")}</span></li>)}</ul></section>}
         </div>
       )}

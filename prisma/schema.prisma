@@ -838,7 +838,15 @@ model Document {
   order     Order?   @relation(fields: [orderId], references: [id])
   type      String
   number    String   @unique
+  refId     String   // order, payment, trade-in, swap or booking id: what the document is about
   createdAt DateTime @default(now())
+
+  @@unique([type, refId])
+}
+
+model DocumentCounter {
+  key String @id // e.g. INV-20261005
+  seq Int    @default(0)
 }
 
 // ---- CMS & marketing ----

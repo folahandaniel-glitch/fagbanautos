@@ -28,7 +28,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const sp = await searchParams;
   const user = await getSessionUser();
   if (!user) redirect(`/account/login?next=${encodeURIComponent(`/order/${number}`)}`);
-  const order = await db.order.findUnique({ where: { orderNumber: number }, include: { items: true, payments: { orderBy: { createdAt: "desc" }, include: { order: false } }, installment: true } });
+  const order = await db.order.findUnique({ where: { orderNumber: number }, include: { items: true, payments: { orderBy: { createdAt: "desc" } }, installment: true, reservations: { select: { id: true } } } });
   if (!order) notFound();
   const staffView = user.kind === "STAFF" && user.permissions.has("orders:view");
   if (!staffView && order.customerId !== user.customerId) notFound();
@@ -41,6 +41,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const pct = owed > 0 ? Math.min(100, Math.floor((paid / owed) * 100)) : 0;
   const active = sp.pay ? order.payments.find((p) => p.id === sp.pay) : undefined;
   const bank = active?.bankAccountId ? await db.bankAccount.findUnique({ where: { id: active.bankAccountId } }) : null;
+  const otherBanks = bank ? await db.bankAccount.findMany({ where: { isActive: true, id: { not: bank.id } }, orderBy: { sortOrder: "asc" } }) : [];
   const [pay, s] = await Promise.all([getPaystackConfig(), getSettings()]);
   const canPay = remaining > 0 && !["CANCELLED", "REFUNDED"].includes(order.status) && order.vatExemptionStatus !== "PENDING_APPROVAL" && order.customerId === user.customerId;
   const suggested = Math.ceil(Math.min(remaining, Number(order.pricingSnapshot && (order.pricingSnapshot as { amountDueNow?: number }).amountDueNow ? (order.pricingSnapshot as { amountDueNow: number }).amountDueNow : remaining)) / 100);
@@ -89,6 +90,10 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 <div><dt className="text-muted">Order number</dt><dd className="font-semibold">{order.orderNumber}</dd></div>
               </dl>
               {bank.instructions && <p className="mt-3 text-sm text-muted">{bank.instructions}</p>}
+              {otherBanks.length > 0 && (
+                <div className="mt-4 rounded-xl bg-canvas p-3 text-sm"><p className="font-semibold text-navy">You may instead pay into any of these FAGDAN accounts (use the same reference):</p>
+                  <ul className="mt-2 space-y-1">{otherBanks.map((b) => <li key={b.id}>{b.bankName}: <span className="font-mono font-semibold">{b.accountNumber}</span> · {b.accountName}</li>)}</ul></div>
+              )}
               <form action={uploadProof} className="mt-5 space-y-3" encType="multipart/form-data">
                 <input type="hidden" name="paymentId" value={active.id} />
                 <div><label className="label" htmlFor="proof">Upload proof of payment (JPG, PNG, WebP or PDF, max 4 MB)</label><input id="proof" name="proof" type="file" required accept="image/jpeg,image/png,image/webp,application/pdf" className="input !py-2" /></div>
@@ -112,6 +117,18 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               <div className="flex justify-between"><dt className="text-muted">Balance</dt><dd className="font-semibold">{formatNaira(remaining)}</dd></div>
             </dl>
             <div className="h-2 rounded-full bg-brand-50" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Payment progress"><div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} /></div>
+          </section>
+
+          <section className="card space-y-2 p-5 text-sm" aria-labelledby="docs-h">
+            <h2 id="docs-h" className="font-display text-lg font-bold text-navy">Documents</h2>
+            <ul className="space-y-1.5 font-medium text-brand">
+              <li><a className="hover:underline" href={`/api/documents/invoice/${order.orderNumber}`} target="_blank" rel="noopener">Invoice (PDF)</a></li>
+              <li><a className="hover:underline" href={`/api/documents/quotation/${order.orderNumber}`} target="_blank" rel="noopener">Quotation (PDF)</a></li>
+              <li><a className="hover:underline" href={`/api/documents/statement/${order.orderNumber}`} target="_blank" rel="noopener">Payment statement (PDF)</a></li>
+              {isInst && <li><a className="hover:underline" href={`/api/documents/installment/${order.orderNumber}`} target="_blank" rel="noopener">Installment statement (PDF)</a></li>}
+              {order.items.length > 0 && order.reservations.length > 0 && <li><a className="hover:underline" href={`/api/documents/reservation/${order.orderNumber}`} target="_blank" rel="noopener">Reservation confirmation (PDF)</a></li>}
+              {order.payments.filter((p) => p.status === "SUCCESS").map((p) => <li key={p.id}><a className="hover:underline" href={`/api/documents/receipt/${p.id}`} target="_blank" rel="noopener">Receipt {p.reference} (PDF)</a></li>)}
+            </ul>
           </section>
 
           {canPay && (

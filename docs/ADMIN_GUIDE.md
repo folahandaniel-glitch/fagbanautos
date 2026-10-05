@@ -17,6 +17,9 @@ Super Admin (everything) plus ten staff roles: Inventory, Sales, Finance, Custom
 | Approve a VAT exemption | VAT > pending requests. |
 | Update a booking, import, trade-in, swap, finance application or lead | the matching item in the menu; the customer is notified in-app. |
 | Change business information | System settings (phone, email, address, social, branding, PWA, SEO, VAT, installment, payments). Changes are versioned and audited. |
+| Add or change a bank account | System settings > Bank accounts. Add as many as you like; every active account is shown to customers. Only the Super Admin can change them; every change is audited. |
+| Connect Paystack | System settings > Paystack: paste the public and secret keys, choose Test or Live, tick Enable, press "Save and test key", then set the webhook URL shown on that page in your Paystack dashboard. The secret is stored encrypted and never shown again. |
+| Download an invoice, receipt or statement | Orders > order > Documents (also on the customer's order page). |
 | Add a division | Divisions > Create. It appears in the switcher and footer immediately. |
 | Edit pages, FAQs, menu, banners, coupons | Content (CMS). |
 | Reports and Excel exports | Reports and exports. |

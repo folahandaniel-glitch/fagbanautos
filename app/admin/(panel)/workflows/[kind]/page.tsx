@@ -11,6 +11,8 @@ import { PageHeader, Notice, Pill } from "@/components/admin/ui";
 export const metadata: Metadata = { title: "Workflow", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
+const DOC_LINK: Record<string, string> = { bookings: "booking", tradeins: "trade-in", swaps: "swap" };
+
 type Row = { id: string; title: string; sub: string; status: string; extra?: React.ReactNode; fields?: { owner?: string | null; priority?: string; nextAction?: string | null; nextFollowUp?: Date | null } };
 
 async function load(kind: string): Promise<Row[]> {
@@ -54,7 +56,7 @@ export default async function WorkflowPage({ params, searchParams }: { params: P
         {rows.length === 0 && <p className="card p-6 text-center text-sm text-muted">Nothing here yet.</p>}
         {rows.map((r) => (
           <article key={r.id} className="card p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold text-navy">{r.title}</h2><p className="text-sm text-muted">{r.sub}</p></div><Pill>{r.status.replace(/_/g, " ")}</Pill></div>
+            <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className="font-semibold text-navy">{r.title}</h2><p className="text-sm text-muted">{r.sub}</p></div><div className="flex items-center gap-3">{DOC_LINK[kind] && <a className="text-sm font-semibold text-brand hover:underline" href={`/api/documents/${DOC_LINK[kind]}/${r.id}`} target="_blank" rel="noopener">PDF</a>}<Pill>{r.status.replace(/_/g, " ")}</Pill></div></div>
             {canEdit && (
               <form action={updateWorkflow} className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3">
                 <input type="hidden" name="kind" value={kind} /><input type="hidden" name="id" value={r.id} />

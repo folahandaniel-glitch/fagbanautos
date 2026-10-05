@@ -17,6 +17,7 @@ import { DIVISIONS, PRODUCT_TEMPLATES, SERVICES, FIRST_NAMES, LAST_NAMES } from 
 import { VEHICLE_SEEDS, COLOURS, NG_STATES, rng, pick } from "./seed-data/vehicles";
 import { createOrder, applyVerifiedPayment, buildQuote } from "../lib/services/orders";
 import { nairaToKobo as N } from "../lib/money";
+import { LEGAL_PAGES } from "./seed-data/legal";
 
 const db = new PrismaClient();
 const slugify = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -95,25 +96,23 @@ async function seedStructure() {
 
 async function seedSystem() {
   await db.paymentGateway.upsert({ where: { key: "paystack" }, create: { key: "paystack", name: "Paystack", enabled: false, mode: "test" }, update: {} });
-  if ((await db.bankAccount.count()) === 0) {
-    const banks = ["GTBank", "Access Bank", "First Bank", "Zenith Bank", "UBA", "Moniepoint"];
-    await db.bankAccount.createMany({
-      data: banks.slice(0, 3).map((b, i) => ({
-        bankName: b, accountName: "FAGDAN AUTOMOTIVE GROUP (PLACEHOLDER)", accountNumber: "0000000000", accountType: "Current",
-        instructions: "PLACEHOLDER ACCOUNT. Do not pay. The business will enter its real account details in Admin > Settings > Bank Accounts.",
-        isPlaceholder: true, isActive: false, sortOrder: i,
-      })),
-    });
+  // Company bank account supplied by the owner. Editable and extendable in Admin > Settings > Bank accounts.
+  const REAL_ACCOUNT = { bankName: "GTBank", accountName: "Banjo Folahan Daniel", accountNumber: "0121041488", accountType: "Savings", currency: "NGN", instructions: "Transfer the exact amount payable and use your payment reference as the narration. Then upload your proof of payment on your order page. Payments are credited after our finance team verifies receipt." };
+  if ((await db.bankAccount.count({ where: { accountNumber: REAL_ACCOUNT.accountNumber } })) === 0) {
+    await db.bankAccount.create({ data: { ...REAL_ACCOUNT, isActive: true, isPlaceholder: false, sortOrder: 0 } });
   }
+  // Placeholder accounts are removed as soon as a real account exists (they are never shown to customers while inactive).
+  await db.bankAccount.deleteMany({ where: { isPlaceholder: true } });
   const pages: [string, string, string][] = [
     ["about", "About FAGDAN", "FAGDAN Automotive Group is a Nigerian automotive business founded by Fagbure and King Fodan. FAGDAN AutoGallery is our flagship vehicle marketplace, supported by Auto Parts, Auto Accessories, Auto Technology, Auto Care, Vehicle Finance and Imports. Driven by Trust. Powered by Choice."],
-    ["terms", "Terms and Conditions", "DRAFT: These terms are a template and must be reviewed by Nigerian legal counsel before launch. Prices are in Naira. Vehicles are subject to availability and verification. Orders are confirmed only after payment is verified."],
-    ["privacy", "Privacy Policy", "DRAFT for legal review under the Nigeria Data Protection Act 2023. We collect only the data needed to process your order, finance, service and import requests, protect it with industry-standard security, and never sell it. You may request access, correction or deletion at any time."],
-    ["refunds", "Refund and Cancellation Policy", "DRAFT for legal review. Describe refund eligibility, reservation deposit treatment, cancellation windows and timelines here."],
-    ["installment-terms", "FAGDAN Installment Terms", "DRAFT for legal review. FAGDAN offers installment purchase on selected vehicles at the FAGDAN installment price (outright price plus 10%). The vehicle is released only after at least 90% of the installment price has been paid and verified. FAGDAN is not a bank or a licensed lender; where third-party financing is used, the provider will be named."],
-    ["cookies", "Cookie Policy", "DRAFT for legal review. Non-essential cookies are off by default and only set with your consent."],
   ];
   for (const [slug, title, body] of pages) await db.cmsPage.upsert({ where: { slug }, create: { slug, title, body }, update: {} });
+  // Legal pages: create, or upgrade the short placeholder stubs. Pages the business has already edited are never overwritten.
+  for (const [slug, title, body] of LEGAL_PAGES) {
+    const existing = await db.cmsPage.findUnique({ where: { slug } });
+    if (!existing) await db.cmsPage.create({ data: { slug, title, body } });
+    else if (existing.body.length < 800) await db.cmsPage.update({ where: { slug }, data: { title, body } });
+  }
 
   if ((await db.menuItem.count()) === 0) {
     const items: [string, string][] = [["Home", "/"], ["Cars", "/cars"], ["Auto Parts", "/parts"], ["Accessories", "/accessories"], ["Auto Care", "/auto-care"], ["Vehicle Finance", "/finance"], ["FAGDAN Imports", "/imports"], ["Sell or Swap", "/sell-or-swap"], ["About", "/about"], ["Contact", "/contact"]];

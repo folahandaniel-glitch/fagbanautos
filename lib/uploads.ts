@@ -30,17 +30,16 @@ export async function validateUpload(file: File, rule: UploadRule): Promise<{ by
   return { bytes, ext: sig.ext[0], mime: sig.mime };
 }
 
-/** Storage driver. Local disk in development; Vercel Blob (REST) in production. Files get random, unguessable names. */
+/** Storage driver. Local disk in development; Vercel Blob (public store, SDK) in production. Files get random, unguessable names. */
 export async function storeFile(bytes: Uint8Array, ext: string, mime: string, folder: string): Promise<string> {
   const name = `${folder}/${Date.now()}-${randomBytes(12).toString("hex")}.${ext}`;
   const driver = process.env.STORAGE_DRIVER ?? "local";
   if (driver === "blob") {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is not set");
-    const res = await fetch(`https://blob.vercel-storage.com/${name}`, { method: "PUT", headers: { authorization: `Bearer ${token}`, "x-api-version": "7", "x-content-type": mime, "x-add-random-suffix": "0" }, body: Buffer.from(bytes) });
-    if (!res.ok) throw new Error(`Blob upload failed (${res.status})`);
-    const json = (await res.json()) as { url: string };
-    return json.url;
+    const { put } = await import("@vercel/blob");
+    const blob = await put(name, Buffer.from(bytes), { access: "public", contentType: mime, addRandomSuffix: false, token });
+    return blob.url;
   }
   if (process.env.NODE_ENV === "production") throw new Error("Configure STORAGE_DRIVER=blob (local disk is not available on Vercel)");
   const full = path.join(process.cwd(), "uploads", name);

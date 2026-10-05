@@ -45,7 +45,7 @@ export async function createBooking(input: { serviceId: string; customerId: stri
   if (+end > +lagosDate(input.dateStr, close)) throw new BookingError("This service would run past closing time. Please choose an earlier slot.");
   try {
     return await db.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${input.location + input.dateStr}))`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${input.location + input.dateStr}))`;
       const clash = await tx.serviceBooking.count({ where: { location: input.location, status: { not: "CANCELLED" }, slotStart: { lt: end }, slotEnd: { gt: start } } });
       if (clash > 0) throw new BookingError("Sorry, that slot has just been taken. Please pick another time.");
       return tx.serviceBooking.create({ data: { serviceId: input.serviceId, customerId: input.customerId, vehicleInfo: input.vehicleInfo, location: input.location, slotStart: start, slotEnd: end, notes: input.notes, photos: input.photos ?? [], isDemo: input.isDemo ?? false } });

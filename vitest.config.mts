@@ -14,6 +14,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname),
       "next/headers": path.resolve(import.meta.dirname, "tests/stubs/next-headers.ts"),
+      "next/cache": path.resolve(import.meta.dirname, "tests/stubs/next-cache.ts"),
     },
   },
 });

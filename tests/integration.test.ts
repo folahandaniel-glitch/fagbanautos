@@ -22,7 +22,7 @@ async function vehicle(priceNaira: number, opts: { installment?: boolean } = {})
     data: {
       type: "VEHICLE", divisionId: division.id, sku: `T-${suffix}-${id}`, slug: `t-${suffix}-${id}`, name: `Test Vehicle ${id}`, price: BigInt(priceNaira * 100),
       status: "ACTIVE", stockOnHand: 1, isDemo: true,
-      vehicle: { create: { inventoryId: `TINV-${suffix}-${id}`, stockNumber: `TSTK-${suffix}-${id}`, vin: `TESTVIN${suffix}${id}`.slice(0, 17).padEnd(17, "0"), makeName: "Test", modelName: "Car", year: 2024, bodyType: "Sedan", fuelType: "Petrol", transmission: "Automatic", installmentAvailable: !!opts.installment, isDemo: true } },
+      vehicle: { create: { inventoryId: `TINV-${suffix}-${id}`, stockNumber: `TSTK-${suffix}-${id}`, vin: `TV${randomUUID().replace(/-/g, "").slice(0, 15).toUpperCase()}`, makeName: "Test", modelName: "Car", year: 2024, bodyType: "Sedan", fuelType: "Petrol", transmission: "Automatic", installmentAvailable: !!opts.installment, isDemo: true } },
     },
     include: { vehicle: true },
   });

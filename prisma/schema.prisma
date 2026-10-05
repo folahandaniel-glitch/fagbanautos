@@ -1,0 +1,1004 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+// ---- Access control ----
+enum UserKind {
+  STAFF
+  CUSTOMER
+}
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  INVITED
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  name        String
+  description String?
+  isSystem    Boolean          @default(false)
+  users       User[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id       String           @id @default(cuid())
+  key      String           @unique // e.g. "orders:verify"
+  resource String
+  action   String
+  roles    RolePermission[]
+
+  @@index([resource])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id                 String     @id @default(cuid())
+  kind               UserKind   @default(CUSTOMER)
+  email              String     @unique
+  name               String
+  phone              String?
+  passwordHash       String
+  roleId             String?
+  role               Role?      @relation(fields: [roleId], references: [id])
+  status             UserStatus @default(ACTIVE)
+  mustChangePassword Boolean    @default(false)
+  totpSecretEnc      String?
+  totpEnabled        Boolean    @default(false)
+  failedLogins       Int        @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  sessionVersion     Int        @default(0)
+  isDemo             Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  customer           Customer?
+  auditLogs          AuditLog[]
+  assignedTasks      Task[]     @relation("TaskAssignee")
+  ownedLeads         Lead[]
+  notifications      Notification[]
+
+  @@index([kind, status])
+}
+
+// ---- Customers / CRM ----
+enum KycStatus {
+  NONE
+  SUBMITTED
+  VERIFIED
+  REJECTED
+}
+
+model Customer {
+  id            String    @id @default(cuid())
+  userId        String?   @unique
+  user          User?     @relation(fields: [userId], references: [id])
+  name          String
+  email         String?
+  phone         String?
+  city          String?
+  state         String?
+  address       String?
+  kycStatus     KycStatus @default(NONE)
+  kycIdType     String?
+  kycIdLast4    String?
+  sourceOfFunds String?
+  marketingConsent Boolean @default(false)
+  isDemo        Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  orders        Order[]
+  reservations  Reservation[]
+  tradeIns      TradeIn[]
+  swaps         SwapRequest[]
+  finance       FinanceApplication[]
+  bookings      ServiceBooking[]
+  importCases   ImportCase[]
+  favourites    Favourite[]
+  leads         Lead[]
+
+  @@index([email])
+  @@index([phone])
+}
+
+model Favourite {
+  customerId String
+  productId  String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@id([customerId, productId])
+}
+
+// ---- Catalogue ----
+enum ProductType {
+  VEHICLE
+  PART
+  ACCESSORY
+  TECHNOLOGY
+  SERVICE
+  OTHER
+}
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+  SOLD
+}
+enum Condition {
+  BRAND_NEW
+  FOREIGN_USED
+  NIGERIAN_USED
+  CERTIFIED_USED
+  NEARLY_NEW
+  EXECUTIVE_USED
+}
+enum PartGrade {
+  OEM
+  AFTERMARKET
+}
+
+model Division {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  tagline     String?
+  description String?
+  icon        String?
+  accent      String?
+  sortOrder   Int        @default(0)
+  isVisible   Boolean    @default(true)
+  categories  Category[]
+  products    Product[]
+  services    Service[]
+}
+
+model Category {
+  id         String     @id @default(cuid())
+  divisionId String
+  division   Division   @relation(fields: [divisionId], references: [id])
+  parentId   String?
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryTree")
+  slug       String     @unique
+  name       String
+  vatApplicable Boolean @default(true)
+  sortOrder  Int        @default(0)
+  products   Product[]
+
+  @@index([divisionId])
+}
+
+model Brand {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  slug     String    @unique
+  country  String?
+  isVehicleMake Boolean @default(false)
+  logoUrl  String?
+  products Product[]
+  models   VehicleModel[]
+}
+
+model VehicleModel {
+  id      String @id @default(cuid())
+  brandId String
+  brand   Brand  @relation(fields: [brandId], references: [id])
+  name    String
+  bodyType String?
+
+  @@unique([brandId, name])
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  type          ProductType
+  divisionId    String
+  division      Division      @relation(fields: [divisionId], references: [id])
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  brandId       String?
+  brand         Brand?        @relation(fields: [brandId], references: [id])
+  sku           String        @unique
+  slug          String        @unique
+  name          String
+  shortDescription String?
+  description   String?
+  price         BigInt        // kobo
+  discount      BigInt        @default(0)
+  vatApplicable Boolean       @default(true)
+  condition     Condition?
+  origin        String?
+  partGrade     PartGrade?
+  partNumber    String?
+  warranty      String?
+  weightKg      Float?
+  dimensions    String?
+  specs         Json?
+  features      String[]
+  videoUrl      String?
+  seoTitle      String?
+  seoDescription String?
+  status        ProductStatus @default(DRAFT)
+  featured      Boolean       @default(false)
+  // stock (non-vehicle). Vehicles use quantity 1 with onHand 1 -> 0 when sold.
+  stockOnHand   Int           @default(0)
+  stockReserved Int           @default(0)
+  stockSold     Int           @default(0)
+  lowStockThreshold Int       @default(3)
+  allowBackorder Boolean      @default(false)
+  isDemo        Boolean       @default(false)
+  needsImage    Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  vehicle       Vehicle?
+  images        ProductImage[]
+  compat        Compatibility[]
+  stockMovements StockMovement[]
+  orderItems    OrderItem[]
+  reservations  Reservation[]
+  favourites    Favourite[]
+  cartItems     CartItem[]
+
+  @@index([type, status])
+  @@index([divisionId, categoryId])
+  @@index([featured])
+}
+
+model Vehicle {
+  productId     String   @id
+  product       Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventoryId   String   @unique
+  stockNumber   String   @unique
+  vin           String?  @unique
+  makeName      String
+  modelName     String
+  trim          String?
+  year          Int
+  bodyType      String
+  fuelType      String
+  transmission  String
+  driveType     String?
+  engine        String?
+  horsepower    Int?
+  mileageKm     Int?
+  colour        String?
+  installmentAvailable Boolean @default(false)
+  installmentUpliftBps Int?
+  minDepositBps Int?
+  isDemo        Boolean  @default(false)
+
+  @@index([makeName, modelName])
+  @@index([year])
+  @@index([bodyType])
+}
+
+model Compatibility {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  makeName  String
+  modelName String?
+  yearFrom  Int?
+  yearTo    Int?
+  engine    String?
+  trim      String?
+
+  @@index([makeName, modelName])
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int     @default(0)
+  isPlaceholder Boolean @default(false)
+
+  @@index([productId])
+}
+
+enum StockMovementType {
+  RECEIVE
+  SALE
+  RESERVE
+  RELEASE
+  ADJUST
+  RETURN
+}
+
+model StockMovement {
+  id        String            @id @default(cuid())
+  productId String
+  product   Product           @relation(fields: [productId], references: [id])
+  type      StockMovementType
+  quantity  Int
+  reason    String?
+  orderId   String?
+  actorId   String?
+  createdAt DateTime          @default(now())
+
+  @@index([productId, createdAt])
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  divisionId  String
+  division    Division @relation(fields: [divisionId], references: [id])
+  slug        String   @unique
+  name        String
+  description String?
+  price       BigInt   // kobo, "from" price
+  priceNote   String?
+  durationMin Int      @default(60)
+  vatApplicable Boolean @default(true)
+  isActive    Boolean  @default(true)
+  isDemo      Boolean  @default(false)
+  bookings    ServiceBooking[]
+}
+
+// ---- Commerce ----
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAYMENT_VERIFICATION
+  PAID
+  PARTIALLY_PAID
+  PROCESSING
+  RESERVED
+  READY_FOR_COLLECTION
+  READY_FOR_DELIVERY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+}
+enum PaymentMode {
+  OUTRIGHT
+  INSTALLMENT
+}
+enum DeliveryMethod {
+  PICKUP
+  DELIVERY
+}
+enum PaymentMethod {
+  PAYSTACK
+  BANK_TRANSFER
+}
+enum PaymentStatus {
+  INITIATED
+  PENDING
+  AWAITING_VERIFICATION
+  CLARIFICATION_REQUESTED
+  SUCCESS
+  FAILED
+  REJECTED
+  REVERSED
+}
+enum LedgerType {
+  PAYMENT
+  REFUND
+  ADJUSTMENT
+  TRADE_IN_CREDIT
+}
+
+model OrderCounter {
+  dateStamp String @id
+  seq       Int    @default(0)
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  sessionKey String     @unique
+  customerId String?
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+}
+
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int     @default(1)
+  savedForLater Boolean @default(false)
+
+  @@unique([cartId, productId])
+}
+
+model Order {
+  id            String         @id @default(cuid())
+  orderNumber   String         @unique
+  customerId    String
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  status        OrderStatus    @default(PENDING_PAYMENT)
+  paymentMode   PaymentMode    @default(OUTRIGHT)
+  currency      String         @default("NGN")
+  subtotal      BigInt
+  discountTotal BigInt         @default(0)
+  upliftTotal   BigInt         @default(0)
+  vatTotal      BigInt         @default(0)
+  vatRateBps    Int            @default(750)
+  vatEnabled    Boolean        @default(true)
+  vatExemptionStatus String?
+  chargesTotal  BigInt         @default(0)
+  tradeInCredit BigInt         @default(0)
+  grandTotal    BigInt
+  amountPaid    BigInt         @default(0)
+  releaseThreshold BigInt      @default(0)
+  releaseState  String?
+  pricingSnapshot Json
+  deliveryMethod DeliveryMethod @default(PICKUP)
+  deliveryAddress String?
+  deliveryCity  String?
+  deliveryState String?
+  deliveryContact String?
+  deliveryFee   BigInt         @default(0)
+  deliveryStatus String?
+  assignedStaffId String?
+  notes         String?
+  couponCode    String?
+  isDemo        Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  items         OrderItem[]
+  payments      Payment[]
+  ledger        LedgerEntry[]
+  history       OrderStateHistory[]
+  installment   InstallmentPlan?
+  vatRecords    VatRecord[]
+  releases      ReleaseDecision[]
+  reservations  Reservation[]
+  documents     Document[]
+
+  @@index([customerId])
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id          String  @id @default(cuid())
+  orderId     String
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product @relation(fields: [productId], references: [id])
+  name        String
+  sku         String
+  quantity    Int
+  unitPrice   BigInt
+  discount    BigInt  @default(0)
+  uplift      BigInt  @default(0)
+  vat         BigInt  @default(0)
+  lineTotal   BigInt
+
+  @@index([orderId])
+}
+
+model OrderStateHistory {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus OrderStatus?
+  toStatus  OrderStatus
+  actorId   String?
+  note      String?
+  createdAt DateTime    @default(now())
+
+  @@index([orderId])
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  orderId          String
+  order            Order         @relation(fields: [orderId], references: [id])
+  method           PaymentMethod
+  status           PaymentStatus @default(INITIATED)
+  reference        String        @unique
+  gatewayReference String?
+  expectedAmount   BigInt
+  paidAmount       BigInt        @default(0)
+  currency         String        @default("NGN")
+  channel          String?
+  bankAccountId    String?
+  proofUrl         String?
+  verifiedById     String?
+  verifiedAt       DateTime?
+  rejectionReason  String?
+  rawEvent         Json?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  ledger           LedgerEntry[]
+
+  @@index([orderId])
+  @@index([status])
+}
+
+model LedgerEntry {
+  id        String     @id @default(cuid())
+  orderId   String
+  order     Order      @relation(fields: [orderId], references: [id])
+  paymentId String?
+  payment   Payment?   @relation(fields: [paymentId], references: [id])
+  type      LedgerType
+  amount    BigInt     // signed kobo: payments +, refunds -
+  note      String?
+  actorId   String?
+  createdAt DateTime   @default(now())
+
+  @@unique([paymentId, type])
+  @@index([orderId])
+}
+
+model BankAccount {
+  id          String  @id @default(cuid())
+  bankName    String
+  accountName String
+  accountNumber String
+  accountType String  @default("Current")
+  branch      String?
+  bankCode    String?
+  currency    String  @default("NGN")
+  instructions String?
+  isActive    Boolean @default(true)
+  isPlaceholder Boolean @default(false)
+  sortOrder   Int     @default(0)
+}
+
+model PaymentGateway {
+  id        String  @id @default(cuid())
+  key       String  @unique // "paystack"
+  name      String
+  enabled   Boolean @default(false)
+  mode      String  @default("test") // test | live
+  publicKey String?
+  secretKeyEnc String?
+  currency  String  @default("NGN")
+  updatedAt DateTime @updatedAt
+}
+
+model InstallmentPlan {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  outrightPrice  BigInt
+  installmentPrice BigInt
+  upliftBps      Int
+  thresholdBps   Int
+  thresholdKobo  BigInt
+  deposit        BigInt
+  schedule       InstallmentSchedule[]
+}
+
+model InstallmentSchedule {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      InstallmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  dueDate   DateTime
+  amount    BigInt
+  paid      BigInt   @default(0)
+  status    String   @default("DUE")
+
+  @@index([planId])
+}
+
+model VatRecord {
+  id           String   @id @default(cuid())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customerId   String
+  previousState Boolean
+  newState     Boolean
+  vatRemoved   BigInt   @default(0)
+  reason       String?
+  evidenceUrl  String?
+  status       String   @default("APPLIED") // APPLIED | PENDING_APPROVAL | APPROVED | REJECTED
+  approverId   String?
+  ip           String?
+  sessionId    String?
+  createdAt    DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model ReleaseDecision {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  state     String   // ELIGIBLE | BLOCKED
+  paid      BigInt
+  threshold BigInt
+  overridden Boolean @default(false)
+  reason    String?
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+}
+
+model Reservation {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  orderId    String?
+  order      Order?   @relation(fields: [orderId], references: [id])
+  quantity   Int      @default(1)
+  status     String   @default("ACTIVE") // ACTIVE | CONVERTED | EXPIRED | CANCELLED
+  deposit    BigInt   @default(0)
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([productId, status])
+  @@index([expiresAt])
+}
+
+// ---- Customer journeys ----
+model TestDrive {
+  id         String   @id @default(cuid())
+  productId  String
+  name       String
+  phone      String
+  preferredAt DateTime
+  status     String   @default("REQUESTED")
+  notes      String?
+  createdAt  DateTime @default(now())
+}
+
+model TradeIn {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  make        String
+  model       String
+  year        Int
+  mileageKm   Int?
+  condition   String?
+  photos      String[]
+  description String?
+  valuation   BigInt?
+  valuationExpiresAt DateTime?
+  status      String   @default("SUBMITTED")
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model SwapRequest {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  ownVehicle  String
+  targetProductId String?
+  customerVehicleValue BigInt?
+  targetValue BigInt?
+  cashDifference BigInt?
+  status      String   @default("REQUESTED")
+  notes       String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model FinanceApplication {
+  id          String   @id @default(cuid())
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  productId   String?
+  vehiclePrice BigInt
+  deposit     BigInt
+  requested   BigInt
+  termMonths  Int
+  provider    String?
+  documents   String[]
+  status      String   @default("SUBMITTED")
+  notes       String?
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model ServiceBooking {
+  id          String   @id @default(cuid())
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  vehicleInfo String
+  location    String
+  slotStart   DateTime
+  slotEnd     DateTime
+  status      String   @default("CONFIRMED")
+  notes       String?
+  photos      String[]
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@unique([location, slotStart])
+  @@index([serviceId, slotStart])
+}
+
+model ImportCase {
+  id          String   @id @default(cuid())
+  caseNumber  String   @unique
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id])
+  make        String
+  model       String
+  year        Int?
+  trim        String?
+  country     String
+  budget      BigInt?
+  condition   String?
+  colour      String?
+  specs       String?
+  quantity    Int      @default(1)
+  notes       String?
+  status      String   @default("REQUEST_RECEIVED")
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  events      ImportCaseEvent[]
+}
+
+model ImportCaseEvent {
+  id        String   @id @default(cuid())
+  caseId    String
+  case      ImportCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  status    String
+  note      String?
+  actorId   String?
+  createdAt DateTime @default(now())
+}
+
+// ---- CRM / ops ----
+model Lead {
+  id         String   @id @default(cuid())
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+  name       String
+  phone      String?
+  email      String?
+  source     String?
+  interest   String?
+  stage      String   @default("NEW")
+  priority   String   @default("MEDIUM")
+  ownerId    String?
+  owner      User?    @relation(fields: [ownerId], references: [id])
+  nextAction String?
+  nextFollowUpAt DateTime?
+  isDemo     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  activities LeadActivity[]
+
+  @@index([stage])
+}
+
+model LeadActivity {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  note      String
+  actorId   String?
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  assigneeId  String?
+  assignee    User?    @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  priority    String   @default("MEDIUM")
+  deadline    DateTime?
+  status      String   @default("OPEN")
+  customerId  String?
+  productId   String?
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  channel   String   @default("IN_APP")
+  event     String
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+model MessageTemplate {
+  id      String @id @default(cuid())
+  key     String @unique
+  channel String
+  subject String?
+  body    String
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  orderId   String?
+  order     Order?   @relation(fields: [orderId], references: [id])
+  type      String
+  number    String   @unique
+  createdAt DateTime @default(now())
+}
+
+// ---- CMS & marketing ----
+model CmsPage {
+  id        String  @id @default(cuid())
+  slug      String  @unique
+  title     String
+  body      String
+  seoTitle  String?
+  seoDescription String?
+  published Boolean @default(true)
+  updatedAt DateTime @updatedAt
+}
+
+model MenuItem {
+  id        String  @id @default(cuid())
+  menu      String  @default("primary")
+  label     String
+  href      String
+  sortOrder Int     @default(0)
+  isVisible Boolean @default(true)
+}
+
+model Banner {
+  id        String  @id @default(cuid())
+  placement String  @default("home-hero")
+  title     String
+  subtitle  String?
+  imageUrl  String?
+  ctaLabel  String?
+  ctaHref   String?
+  isActive  Boolean @default(true)
+  sortOrder Int     @default(0)
+}
+
+model BlogPost {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  excerpt   String?
+  body      String
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Faq {
+  id        String  @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int     @default(0)
+}
+
+model Testimonial {
+  id       String  @id @default(cuid())
+  author   String
+  body     String
+  verified Boolean @default(false)
+  isActive Boolean @default(false)
+}
+
+model Coupon {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  percentBps Int?
+  amountOff BigInt?
+  minSpend  BigInt   @default(0)
+  maxUses   Int?
+  used      Int      @default(0)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  isActive  Boolean  @default(false)
+}
+
+model Promotion {
+  id        String   @id @default(cuid())
+  name      String
+  description String?
+  discountBps Int?
+  startsAt  DateTime?
+  endsAt    DateTime?
+  isActive  Boolean  @default(false)
+}
+
+// ---- System ----
+model Setting {
+  key       String   @id
+  value     Json
+  group     String   @default("general")
+  isSecret  Boolean  @default(false)
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model SettingVersion {
+  id        String   @id @default(cuid())
+  key       String
+  version   Int
+  oldValue  Json?
+  newValue  Json?
+  reason    String?
+  actorId   String?
+  createdAt DateTime @default(now())
+
+  @@index([key, version])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  targetType String?
+  targetId  String?
+  before    Json?
+  after     Json?
+  reason    String?
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([actorId])
+}
+
+model ConsentRecord {
+  id        String   @id @default(cuid())
+  subject   String
+  purpose   String
+  granted   Boolean
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+model IdempotencyKey {
+  key       String   @id
+  scope     String
+  response  Json?
+  createdAt DateTime @default(now())
+}
+
+model ImportJob {
+  id        String   @id @default(cuid())
+  kind      String
+  status    String   @default("VALIDATED")
+  total     Int      @default(0)
+  succeeded Int      @default(0)
+  failed    Int      @default(0)
+  errors    Json?
+  actorId   String?
+  createdAt DateTime @default(now())
+}
+
+model PageView {
+  id        String   @id @default(cuid())
+  path      String
+  productId String?
+  kind      String   @default("view")
+  createdAt DateTime @default(now())
+
+  @@index([kind, createdAt])
+}

@@ -1,3 +1,4 @@
+import { jsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -29,7 +30,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const quote = inStock ? await buildQuote({ lines: [{ productId: p.id, quantity: 1 }], mode: "OUTRIGHT" }) : null;
   const related = await db.product.findMany({ where: { categoryId: p.categoryId, id: { not: p.id }, status: "ACTIVE" }, include: { images: { take: 1 } }, take: 4 });
   const universal = p.compat.length === 0 && (p.type === "ACCESSORY" || p.type === "PART" || p.type === "TECHNOLOGY");
-  const jsonLd = {
+  const ld = {
     "@context": "https://schema.org", "@type": "Product", name: p.name, sku: p.sku, mpn: p.partNumber ?? undefined, brand: p.brand ? { "@type": "Brand", name: p.brand.name } : undefined,
     description: p.description ?? undefined, image: p.images.map((i) => new URL(i.url, site.appUrl).toString()),
     offers: { "@type": "Offer", price: (Number(p.price) - Number(p.discount)) / 100, priceCurrency: "NGN", availability: inStock ? "https://schema.org/InStock" : "https://schema.org/OutOfStock", url: `${site.appUrl}/shop/${p.slug}` },
@@ -37,7 +38,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const rows: [string, string | null | undefined][] = [["Brand", p.brand?.name], ["Category", p.category?.name], ["SKU", p.sku], ["Part number", p.partNumber], ["Type", p.partGrade === "OEM" ? "OEM (genuine)" : p.partGrade === "AFTERMARKET" ? "Aftermarket" : null], ["Origin", p.origin], ["Warranty", p.warranty]];
   return (
     <div className="container-x py-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/" className="hover:text-brand">Home</Link> / <span>{p.category?.name}</span> / <span className="text-ink">{p.name}</span></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-2">
         <div className="card overflow-hidden"><div className="relative aspect-[4/3] bg-brand-50">{p.images[0] && <SmartImage src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" priority sizes="(max-width:1024px) 100vw, 50vw" />}</div></div>

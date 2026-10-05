@@ -1,3 +1,4 @@
+import { jsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -42,7 +43,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
     ["Fuel", v.fuelType], ["Transmission", v.transmission], ["Drive", v.driveType], ["Engine", v.engine], ["Horsepower", v.horsepower ? `${v.horsepower} hp` : null],
     ["Mileage", v.mileageKm != null ? `${v.mileageKm.toLocaleString("en-NG")} km` : null], ["Colour", v.colour], ["Stock number", v.stockNumber], ["Inventory ID", v.inventoryId], ["VIN", v.vin], ["Warranty", p.warranty],
   ];
-  const jsonLd = {
+  const ld = {
     "@context": "https://schema.org", "@type": "Vehicle", name: p.name, vehicleIdentificationNumber: p.isDemo ? undefined : v.vin ?? undefined, brand: { "@type": "Brand", name: v.makeName }, model: v.modelName,
     vehicleModelDate: String(v.year), mileageFromOdometer: v.mileageKm != null ? { "@type": "QuantitativeValue", value: v.mileageKm, unitCode: "KMT" } : undefined,
     fuelType: v.fuelType, vehicleTransmission: v.transmission, color: v.colour ?? undefined, image: p.images.map((i) => new URL(i.url, site.appUrl).toString()),
@@ -51,7 +52,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const wa = waLink(site.phone1, `Hello FAGDAN, I am interested in the ${p.name} (${v.stockNumber}).`);
   return (
     <div className="container-x py-6">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/" className="hover:text-brand">Home</Link> / <Link href="/cars" className="hover:text-brand">Cars</Link> / <span className="text-ink">{p.name}</span></nav>
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.4fr_1fr]">

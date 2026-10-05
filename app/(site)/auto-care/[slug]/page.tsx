@@ -1,3 +1,4 @@
+import { jsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -27,10 +28,10 @@ export default async function ServicePage({ params, searchParams }: { params: Pr
   const tomorrow = tomorrowIso();
   const date = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) && sp.date >= tomorrow.slice(0, 10) ? sp.date : tomorrow;
   const slots = await availability(service.id, location, date);
-  const jsonLd = { "@context": "https://schema.org", "@type": "Service", name: service.name, description: service.description, provider: { "@type": "AutoRepair", name: "FAGDAN Auto Care" }, offers: { "@type": "Offer", price: Number(service.price) / 100, priceCurrency: "NGN" } };
+  const ld = { "@context": "https://schema.org", "@type": "Service", name: service.name, description: service.description, provider: { "@type": "AutoRepair", name: "FAGDAN Auto Care" }, offers: { "@type": "Offer", price: Number(service.price) / 100, priceCurrency: "NGN" } };
   return (
     <div className="container-x py-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/auto-care" className="hover:text-brand">Auto Care</Link> / <span className="text-ink">{service.name}</span></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-[1fr_420px]">
         <div><h1 className="font-display text-3xl font-extrabold text-navy">{service.name}</h1>

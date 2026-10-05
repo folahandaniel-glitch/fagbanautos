@@ -34,7 +34,9 @@ export async function generateViewport(): Promise<Viewport> {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const site = await getSite();
-  const css = `:root{--brand:${site.primary};--accent:${site.accent};--navy:${site.navy}}`;
+  // Only well-formed hex colours are ever injected into the stylesheet.
+  const hex = (v: string, fallback: string) => (/^#[0-9a-fA-F]{6}$/.test(v) ? v : fallback);
+  const css = `:root{--brand:${hex(site.primary, "#0b3a8f")};--accent:${hex(site.accent, "#c9a227")};--navy:${hex(site.navy, "#071f4d")}}`;
   return (
     <html lang="en-NG" className={`${inter.variable} ${sora.variable} h-full`}>
       <head>

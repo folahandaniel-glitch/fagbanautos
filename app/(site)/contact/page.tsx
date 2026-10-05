@@ -1,3 +1,4 @@
+import { jsonLd } from "@/lib/json-ld";
 import type { Metadata } from "next";
 import { getSite, displayPhone, waLink } from "@/lib/site";
 import { submitContact } from "@/app/actions/enquiry";
@@ -6,10 +7,10 @@ export const metadata: Metadata = { title: "Contact us", alternates: { canonical
 
 export default async function ContactPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const [site, sp] = await Promise.all([getSite(), searchParams]);
-  const jsonLd = { "@context": "https://schema.org", "@type": "AutoDealer", name: site.flagship, telephone: site.phone1, email: site.email, address: { "@type": "PostalAddress", streetAddress: site.address, addressCountry: "NG" }, openingHours: site.hours };
+  const ld = { "@context": "https://schema.org", "@type": "AutoDealer", name: site.flagship, telephone: site.phone1, email: site.email, address: { "@type": "PostalAddress", streetAddress: site.address, addressCountry: "NG" }, openingHours: site.hours };
   return (
     <div className="container-x py-8">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <h1 className="font-display text-3xl font-extrabold text-navy">Contact FAGDAN</h1>
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <div className="card space-y-3 p-6 text-sm">

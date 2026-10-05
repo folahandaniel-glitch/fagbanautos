@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FAGDAN Automotive Group
 
-## Getting Started
+Nigerian automotive digital commerce platform. Flagship marketplace: **FAGDAN AutoGallery**. *Driven by Trust. Powered by Choice.*
 
-First, run the development server:
+Divisions (all data-driven; the Super Admin can add more): AutoGallery (vehicles), Auto Parts, Auto Accessories, Auto Technology, Auto Care, Vehicle Finance, Imports.
+
+## Stack
+
+Next.js 16 (App Router, TypeScript strict) · PostgreSQL + Prisma 6 · Tailwind CSS 4 · three.js / React Three Fiber (optional 3D hero, lazy-loaded with a static fallback) · jose sessions + Argon2id · otplib (staff 2FA) · ExcelJS · Zod · Vitest.
+
+Package manager: **npm** (see `package-lock.json`).
+
+## Quick start (development)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run db:dev          # starts a local PostgreSQL on port 54329 (keep it running)
+cp .env.example .env    # then set AUTH_SECRET and SETTINGS_ENCRYPTION_KEY (see docs/ENVIRONMENT.md)
+npx prisma migrate deploy
+npm run db:seed         # roles, divisions, settings + DEMO data (never in production)
+npm run dev             # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The seed writes one-time staff passwords to `.seed-credentials.txt` (git-ignored). Sign in at `/admin/login`; you are forced to choose a new password at first sign-in.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `npm run dev` / `build` / `start` | Dev server / production build / production server |
+| `npm test` | Unit, database integration and security tests (needs the local PostgreSQL running) |
+| `npm run lint` / `npm run typecheck` | ESLint / TypeScript |
+| `npm run db:migrate` / `db:deploy` / `db:seed` | Prisma migrations and seeding |
+| `npm run icons` | Regenerate favicon and PWA icons from `public/brand/logo-original.png` |
 
-## Learn More
+## Where things live
 
-To learn more about Next.js, take a look at the following resources:
+- `lib/pricing/` the single pricing engine (integer kobo) and the release rule. See `docs/PRICING.md`
+- `lib/services/` orders, payments, Paystack, bookings, Excel, reports
+- `lib/rbac/permissions.ts` permission catalogue and the 10 staff roles
+- `app/(site)/` storefront · `app/admin/` back office · `app/actions/` server actions · `app/api/` webhook, files, cron
+- `prisma/` schema, migrations (including database-level integrity constraints), seed
+- `tests/` Vitest suites
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Documentation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`docs/`: DEPLOYMENT, DATABASE, ENVIRONMENT, ADMIN_GUIDE, SECURITY, PRICING, ASSUMPTIONS, MANUAL_QA.

@@ -97,7 +97,7 @@ describe("Paystack verification (server-side, mocked gateway)", () => {
 describe("service booking: no double booking", () => {
   it("only one of many concurrent requests gets the same slot, and overlapping long services are blocked", async () => {
     const svc = await db.service.create({ data: { divisionId, slug: `svc-${suffix}`, name: "Test Service", price: 10_000_00n, durationMin: 120, isDemo: true } });
-    const date = new Date(Date.now() + 5 * 86_400_000).toISOString().slice(0, 10);
+    const date = new Date(Date.now() + (30 + Math.floor(Math.random() * 600)) * 86_400_000).toISOString().slice(0, 10); // random day: repeatable runs
     const results = await Promise.allSettled(Array.from({ length: 8 }, (_, i) => B.createBooking({ serviceId: svc.id, customerId, location: "Ikeja Workshop (demo)", dateStr: date, hour: 10, vehicleInfo: `Car ${i}`, isDemo: true })));
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     for (const r of results.filter((r) => r.status === "rejected") as PromiseRejectedResult[]) expect(r.reason).toBeInstanceOf(B.BookingError);
@@ -113,7 +113,7 @@ describe("service booking: no double booking", () => {
   });
   it("rejects past times, closing-time overruns and unknown locations", async () => {
     const svc = await db.service.create({ data: { divisionId, slug: `svc2-${suffix}`, name: "Long Service", price: 1_00n, durationMin: 480, isDemo: true } });
-    const date = new Date(Date.now() + 6 * 86_400_000).toISOString().slice(0, 10);
+    const date = new Date(Date.now() + (700 + Math.floor(Math.random() * 600)) * 86_400_000).toISOString().slice(0, 10);
     await expect(B.createBooking({ serviceId: svc.id, customerId, location: "Ikeja Workshop (demo)", dateStr: date, hour: 12, vehicleInfo: "x" })).rejects.toThrow(/closing/);
     await expect(B.createBooking({ serviceId: svc.id, customerId, location: "Moon Base", dateStr: date, hour: 9, vehicleInfo: "x" })).rejects.toThrow(/location/);
     await expect(B.createBooking({ serviceId: svc.id, customerId, location: "Ikeja Workshop (demo)", dateStr: "2020-01-01", hour: 9, vehicleInfo: "x" })).rejects.toThrow(/future/);

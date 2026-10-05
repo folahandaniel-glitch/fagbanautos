@@ -1,3 +1,4 @@
+import { jsonLd } from "@/lib/json-ld";
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getSite } from "@/lib/site";
@@ -19,14 +20,14 @@ export default async function Home() {
     db.product.count({ where: { type: "VEHICLE", status: "ACTIVE" } }),
     db.vehicle.groupBy({ by: ["makeName"], _count: true, orderBy: { _count: { makeName: "desc" } }, take: 10 }),
   ]);
-  const jsonLd = {
+  const ld = {
     "@context": "https://schema.org", "@type": "AutoDealer", name: site.flagship, url: site.appUrl, telephone: site.phone1, email: site.email,
     address: { "@type": "PostalAddress", streetAddress: site.address, addressCountry: "NG" }, slogan: site.tagline,
     parentOrganization: { "@type": "Organization", name: site.name },
   };
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <Hero3D>
         <p className="badge-gold !bg-white/10 !text-accent">{site.flagship}</p>
         <h1 className="mt-4 font-display text-4xl font-extrabold leading-[1.05] tracking-tight sm:text-5xl lg:text-6xl">

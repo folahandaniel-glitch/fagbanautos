@@ -9,7 +9,7 @@
 | D3 | 90% threshold basis | VAT-inclusive grand total. Switchable to pre-VAT (matches the original brief's figures). |
 | D4 | Trade-in credit | Part-payment; VAT on the full price. |
 | D5 | Discount vs uplift | Discount first, then 10% uplift. |
-| D6 | Reservation | 48-hour hold; expiry job every 15 minutes (Vercel Cron). |
+| D6 | Reservation | 48-hour hold; expired holds are released by a daily Vercel Cron job (Hobby plan limit) plus a throttled sweep whenever vehicles are browsed or ordered. |
 | D7 | Real accounts and keys | GTBank account supplied by the owner is active (account type recorded as Savings: confirm). Paystack keys are entered in Admin > Settings > Paystack. |
 
 ## Implemented

@@ -1,4 +1,5 @@
 import { jsonLd } from "@/lib/json-ld";
+import { sweepExpiredReservations } from "@/lib/services/orders";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -30,6 +31,7 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const p = await load(slug);
   if (!p || p.type !== "VEHICLE" || !p.vehicle || p.status === "DRAFT" || p.status === "ARCHIVED") notFound();
   const v = p.vehicle;
+  await sweepExpiredReservations();
   const site = await getSite();
   const available = p.status === "ACTIVE" && p.stockOnHand - p.stockReserved > 0;
   const lines = [{ productId: p.id, quantity: 1 }];

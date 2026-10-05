@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { sweepExpiredReservations } from "@/lib/services/orders";
 import Link from "next/link";
 import { listVehicles, parseVehicleFilters, vehicleFacets } from "@/lib/catalogue";
 import { VehicleCard, conditionLabel } from "@/components/ui/cards";
@@ -12,6 +13,7 @@ const CONDITIONS = ["BRAND_NEW", "FOREIGN_USED", "NIGERIAN_USED", "CERTIFIED_USE
 export default async function CarsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
   const f = parseVehicleFilters(sp);
+  await sweepExpiredReservations();
   const [{ items, total, page, pages }, facets] = await Promise.all([listVehicles(f), vehicleFacets()]);
   const params: Record<string, string | undefined> = { q: f.q, make: f.make, body: f.body, condition: f.condition, origin: f.origin, fuel: f.fuel, transmission: f.transmission, yearFrom: f.yearFrom?.toString(), yearTo: f.yearTo?.toString(), minPrice: f.minPrice?.toString(), maxPrice: f.maxPrice?.toString(), installment: f.installment ? "1" : undefined, sort: f.sort };
   const active = Object.entries(params).filter(([k, v]) => v && k !== "sort");

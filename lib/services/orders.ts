@@ -150,6 +150,7 @@ export interface CreateOrderInput extends QuoteInput {
 }
 
 export async function createOrder(input: CreateOrderInput) {
+  await sweepExpiredReservations();
   const settings = await getSettings();
   const holdHours = Number(settings["inventory.reservationHoldHours"]);
   const requireReason = settings["vat.requireReason"] === true;
@@ -432,4 +433,21 @@ export async function recalculateOrderVat(orderId: string, vatEnabled: boolean, 
     await audit({ actorId, action: vatEnabled ? "vat.exemption_rejected" : "vat.exemption_approved", targetType: "Order", targetId: orderId, before: { vatTotal: Number(order.vatTotal), grandTotal: Number(order.grandTotal) }, after: { vatTotal: pricing.vatTotal, grandTotal: pricing.grandTotal }, reason }, tx);
     return pricing;
   });
+}
+
+
+let lastSweep = 0;
+/**
+ * Releases expired vehicle holds. Called from busy paths (browsing, ordering) and throttled to once a minute per instance,
+ * so holds free up on time even though the Vercel Hobby plan only allows a daily cron job.
+ */
+export async function sweepExpiredReservations(): Promise<void> {
+  const now = Date.now();
+  if (now - lastSweep < 60_000) return;
+  lastSweep = now;
+  try {
+    await expireReservations();
+  } catch (e) {
+    console.error("[sweepExpiredReservations]", e);
+  }
 }

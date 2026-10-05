@@ -13,7 +13,7 @@ CI (`.github/workflows/ci.yml`) runs prisma validate, typecheck, lint, tests (ag
 
 ## 2. Database
 
-Create a managed PostgreSQL (Neon, Supabase or similar) with point-in-time recovery enabled. Use the pooled URL as `DATABASE_URL` and the direct URL as `DIRECT_URL`. Migrations run at build time (`vercel.json`: `prisma migrate deploy && npm run build`).
+Create a managed PostgreSQL (Neon, Supabase or similar) with point-in-time recovery enabled. Use the pooled URL as `DATABASE_URL` and the direct URL as `DIRECT_URL`. Migrations run at build time (`vercel.json`: migrations run on production builds only).
 
 ## 3. Vercel
 

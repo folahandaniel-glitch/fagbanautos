@@ -5,8 +5,8 @@ Commands below are the ones defined in `package.json` (package manager: npm).
 ## 1. GitHub
 
 ```bash
-git remote add origin https://github.com/folahandaniel-glitch/<repository-name>.git
-git push -u origin main
+# already configured: https://github.com/folahandaniel-glitch/fagbanautos
+git push origin main
 ```
 
 CI (`.github/workflows/ci.yml`) runs prisma validate, typecheck, lint, tests (against a Postgres service) and the production build.

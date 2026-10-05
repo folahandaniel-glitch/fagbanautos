@@ -12,7 +12,7 @@ type Db = typeof import("../lib/db");
 let S: Svc;
 let db: Db["db"];
 let division: { id: string };
-let customers: { id: string }[] = [];
+const customers: { id: string }[] = [];
 let staffId = "";
 const suffix = randomUUID().slice(0, 8);
 

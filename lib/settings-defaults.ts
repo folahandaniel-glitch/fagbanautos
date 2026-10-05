@@ -59,6 +59,10 @@ export const SETTING_DEFS: Record<string, SettingDef> = {
   "payments.paystackEnabled": { value: false, group: "payments", label: "Paystack enabled", type: "boolean" },
   "payments.bankTransferEnabled": { value: true, group: "payments", label: "Bank transfer enabled", type: "boolean" },
   "payments.twoPersonApprovalAboveNaira": { value: 50000000, group: "payments", label: "Two-person approval above (NGN)", type: "number" },
+  // Auto care
+  "autocare.locations": { value: "Ikeja Workshop (demo), Lekki Workshop (demo)", group: "general", label: "Auto Care locations (comma separated)" },
+  "autocare.openHour": { value: 9, group: "general", label: "Workshop opens (hour, 24h)", type: "number" },
+  "autocare.closeHour": { value: 17, group: "general", label: "Workshop closes (hour, 24h)", type: "number" },
   // PWA
   "pwa.name": { value: "FAGDAN AUTOGALLERY", group: "pwa", label: "App name" },
   "pwa.shortName": { value: "FAGDAN", group: "pwa", label: "Short name" },

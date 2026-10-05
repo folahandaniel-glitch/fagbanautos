@@ -1,0 +1,132 @@
+"use server";
+
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { Prisma, type ProductType } from "@prisma/client";
+import { db } from "@/lib/db";
+import { audit } from "@/lib/audit";
+import { requireAnyPermission, AuthError } from "@/lib/auth/guard";
+import { nairaToKobo } from "@/lib/money";
+import { PHOTO_RULE, UploadError, storeFile, validateUpload } from "@/lib/uploads";
+
+function go(path: string, kind: "notice" | "error", msg: string): never {
+  redirect(`${path}${path.includes("?") ? "&" : "?"}${kind}=${encodeURIComponent(msg)}`);
+}
+const slugify = (s: string) => s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+
+async function need(type: ProductType | "ANY", action: "create" | "edit" | "delete" | "publish", path: string) {
+  const res = type === "VEHICLE" ? "vehicles" : "products";
+  try { return await requireAnyPermission(`${res}:${action}`, `inventory:${action}`); }
+  catch (e) { if (e instanceof AuthError) redirect(e.status === 401 ? "/admin/login" : `${path}?error=${encodeURIComponent("You do not have permission to do that.")}`); throw e; }
+}
+
+const num = (v: FormDataEntryValue | null) => (v == null || v === "" ? undefined : Number(String(v).replace(/[^\d.-]/g, "")));
+const str = (v: FormDataEntryValue | null) => (v == null ? "" : String(v).trim());
+
+const base = z.object({
+  type: z.enum(["VEHICLE", "PART", "ACCESSORY", "TECHNOLOGY", "SERVICE", "OTHER"]), name: z.string().min(3).max(160), sku: z.string().min(2).max(40), divisionId: z.string().min(1),
+  priceNaira: z.number().min(0).max(100_000_000_000), discountNaira: z.number().min(0).default(0), status: z.enum(["DRAFT", "ACTIVE", "ARCHIVED", "SOLD"]),
+});
+
+export async function saveProduct(formData: FormData) {
+  const id = str(formData.get("id"));
+  const typeRaw = str(formData.get("type")) as ProductType;
+  const path = id ? `/admin/products/${id}` : `/admin/products/new?type=${typeRaw}`;
+  const user = await need(typeRaw, id ? "edit" : "create", "/admin/inventory");
+  const parsed = base.safeParse({ type: typeRaw, name: str(formData.get("name")), sku: str(formData.get("sku")), divisionId: str(formData.get("divisionId")), priceNaira: num(formData.get("priceNaira")) ?? NaN, discountNaira: num(formData.get("discountNaira")) ?? 0, status: str(formData.get("status")) || "DRAFT" });
+  if (!parsed.success) go(path, "error", `Please check: ${parsed.error.issues.map((i) => i.path.join(".")).join(", ")}`);
+  const d = parsed.data;
+  if (d.discountNaira > d.priceNaira) go(path, "error", "Discount cannot exceed the price.");
+  if ((d.status === "ACTIVE") && !user.permissions.has("products:publish") && !user.permissions.has("vehicles:publish") && !user.permissions.has("inventory:edit")) go(path, "error", "You cannot publish listings.");
+  const isVehicle = d.type === "VEHICLE";
+  const stockOnHand = isVehicle ? 1 : Math.max(0, Math.floor(num(formData.get("stockOnHand")) ?? 0));
+
+  const common = {
+    type: d.type, divisionId: d.divisionId, categoryId: str(formData.get("categoryId")) || null, brandId: str(formData.get("brandId")) || null, sku: d.sku, name: d.name,
+    shortDescription: str(formData.get("shortDescription")) || null, description: str(formData.get("description")) || null, price: BigInt(nairaToKobo(d.priceNaira)), discount: BigInt(nairaToKobo(d.discountNaira)),
+    vatApplicable: formData.get("vatApplicable") === "on", condition: (str(formData.get("condition")) || null) as never, origin: str(formData.get("origin")) || null,
+    partGrade: (str(formData.get("partGrade")) || null) as never, partNumber: str(formData.get("partNumber")) || null, warranty: str(formData.get("warranty")) || null,
+    features: str(formData.get("features")).split("\n").map((s) => s.trim()).filter(Boolean), videoUrl: str(formData.get("videoUrl")) || null,
+    seoTitle: str(formData.get("seoTitle")) || null, seoDescription: str(formData.get("seoDescription")) || null, status: d.status, featured: formData.get("featured") === "on",
+    lowStockThreshold: Math.max(0, Math.floor(num(formData.get("lowStockThreshold")) ?? 3)), allowBackorder: formData.get("allowBackorder") === "on",
+  };
+  const vehicle = isVehicle ? {
+    inventoryId: str(formData.get("inventoryId")), stockNumber: str(formData.get("stockNumber")), vin: str(formData.get("vin")).toUpperCase() || null, makeName: str(formData.get("makeName")), modelName: str(formData.get("modelName")),
+    trim: str(formData.get("trim")) || null, year: Math.floor(num(formData.get("year")) ?? 0), bodyType: str(formData.get("bodyType")), fuelType: str(formData.get("fuelType")), transmission: str(formData.get("transmission")),
+    driveType: str(formData.get("driveType")) || null, engine: str(formData.get("engine")) || null, horsepower: num(formData.get("horsepower")) ?? null, mileageKm: num(formData.get("mileageKm")) ?? null, colour: str(formData.get("colour")) || null,
+    installmentAvailable: formData.get("installmentAvailable") === "on",
+  } : null;
+  if (vehicle && (!vehicle.inventoryId || !vehicle.stockNumber || !vehicle.makeName || !vehicle.modelName || vehicle.year < 1980 || !vehicle.bodyType || !vehicle.fuelType || !vehicle.transmission)) go(path, "error", "Vehicles need inventory ID, stock number, make, model, year, body type, fuel and transmission.");
+  if (vehicle?.vin && !/^[A-HJ-NPR-Z0-9]{11,17}$/.test(vehicle.vin)) go(path, "error", "VIN must be 11 to 17 letters and digits (no I, O or Q).");
+
+  // Compatibility: one per line "Make | Model | YearFrom | YearTo"
+  const compat = str(formData.get("compat")).split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((p) => p[0]).map((p) => ({ makeName: p[0], modelName: p[1] || null, yearFrom: p[2] ? Number(p[2]) : null, yearTo: p[3] ? Number(p[3]) : null }));
+
+  // Images: existing placeholders can be replaced by URL lines or an upload
+  const urlLines = str(formData.get("imageUrls")).split("\n").map((s) => s.trim()).filter((s) => /^https:\/\//.test(s) || s.startsWith("/api/files/"));
+  let uploaded: string | null = null;
+  const file = formData.get("imageFile");
+  if (file instanceof File && file.size > 0) {
+    try { const v = await validateUpload(file, PHOTO_RULE); uploaded = await storeFile(v.bytes, v.ext, v.mime, "products"); }
+    catch (e) { if (e instanceof UploadError) go(path, "error", e.message); throw e; }
+  }
+  const imageUrls = [...(uploaded ? [uploaded] : []), ...urlLines];
+
+  try {
+    const before = id ? await db.product.findUnique({ where: { id }, include: { vehicle: true } }) : null;
+    if (id && !before) go("/admin/inventory", "error", "Product not found.");
+    const saved = await db.$transaction(async (tx) => {
+      const p = id
+        ? await tx.product.update({ where: { id }, data: { ...common, slug: before!.slug, ...(isVehicle ? {} : { stockOnHand }) } })
+        : await tx.product.create({ data: { ...common, slug: `${slugify(d.name)}-${slugify(d.sku)}`, stockOnHand } });
+      if (vehicle) await tx.vehicle.upsert({ where: { productId: p.id }, create: { productId: p.id, ...vehicle }, update: vehicle });
+      await tx.compatibility.deleteMany({ where: { productId: p.id } });
+      if (compat.length) await tx.compatibility.createMany({ data: compat.map((c) => ({ ...c, productId: p.id })) });
+      if (imageUrls.length) {
+        await tx.productImage.deleteMany({ where: { productId: p.id, isPlaceholder: true } });
+        const n = await tx.productImage.count({ where: { productId: p.id } });
+        await tx.productImage.createMany({ data: imageUrls.map((url, i) => ({ productId: p.id, url, alt: d.name, sortOrder: n + i })) });
+      }
+      if (before && Number(before.price) !== Number(p.price)) await audit({ actorId: user.id, action: "product.price_change", targetType: "Product", targetId: p.id, before: { price: Number(before.price) }, after: { price: Number(p.price) } }, tx);
+      if (before && before.stockOnHand !== p.stockOnHand) {
+        await tx.stockMovement.create({ data: { productId: p.id, type: "ADJUST", quantity: p.stockOnHand - before.stockOnHand, reason: "Edited in admin", actorId: user.id } });
+        await audit({ actorId: user.id, action: "product.stock_change", targetType: "Product", targetId: p.id, before: { stock: before.stockOnHand }, after: { stock: p.stockOnHand } }, tx);
+      }
+      await audit({ actorId: user.id, action: id ? "product.update" : "product.create", targetType: "Product", targetId: p.id, after: { sku: p.sku, name: p.name, status: p.status } }, tx);
+      return p;
+    });
+    revalidatePath("/admin/inventory");
+    go(`/admin/products/${saved.id}`, "notice", "Saved.");
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") go(path, "error", `Duplicate value: ${(e.meta?.target as string[] | undefined)?.join(", ") ?? "SKU, VIN, stock number or inventory ID"} already exists.`);
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2004") go(path, "error", "That change would break a stock or price rule (for example reserved stock above on-hand).");
+    throw e;
+  }
+}
+
+export async function adjustStock(formData: FormData) {
+  const id = str(formData.get("id"));
+  const delta = Math.trunc(num(formData.get("delta")) ?? 0);
+  const reason = str(formData.get("reason"));
+  const back = str(formData.get("returnTo")) || "/admin/inventory";
+  const user = await need("ANY", "edit", back);
+  if (!delta || reason.length < 3) go(back, "error", "Enter a non-zero change and a reason.");
+  try {
+    await db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Product" WHERE id = ${id} FOR UPDATE`;
+      const p = await tx.product.findUniqueOrThrow({ where: { id } });
+      if (p.type === "VEHICLE") go(back, "error", "Vehicle stock is unique and cannot be adjusted.");
+      const next = p.stockOnHand + delta;
+      if (next < p.stockReserved) go(back, "error", `Cannot reduce stock below the ${p.stockReserved} units reserved by open orders.`);
+      await tx.product.update({ where: { id }, data: { stockOnHand: next } });
+      await tx.stockMovement.create({ data: { productId: id, type: delta > 0 ? "RECEIVE" : "ADJUST", quantity: delta, reason, actorId: user.id } });
+      await audit({ actorId: user.id, action: "product.stock_change", targetType: "Product", targetId: id, before: { stock: p.stockOnHand }, after: { stock: next }, reason }, tx);
+    });
+  } catch (e) {
+    if (e instanceof Prisma.PrismaClientKnownRequestError) go(back, "error", "That stock change is not allowed.");
+    throw e;
+  }
+  revalidatePath("/admin/inventory");
+  go(back, "notice", "Stock updated.");
+}

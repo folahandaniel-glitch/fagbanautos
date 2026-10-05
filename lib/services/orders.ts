@@ -2,7 +2,7 @@ import { Prisma, type OrderStatus, type ProductType } from "@prisma/client";
 import { db } from "../db";
 import { audit } from "../audit";
 import { getSettings, getPricingSettings } from "../settings";
-import { computePricing, type ChargeInput, type LineInput, type PricingResult } from "../pricing/engine";
+import { computePricing, type ChargeInput, type LineInput, type PricingInput, type PricingResult, type PricingSettings } from "../pricing/engine";
 import { evaluateRelease } from "../pricing/release";
 import { formatOrderNumber, lagosDateStamp } from "../order-number";
 import { assertTransition, ReleaseBlockedError } from "../orders/state";
@@ -37,6 +37,9 @@ export interface Quote {
   hasVehicle: boolean;
   minDeposit: number;
   couponApplied?: string;
+  /** Exact engine inputs, stored on the order so totals can be recalculated reproducibly. */
+  pricingInput: PricingInput;
+  pricingSettings: PricingSettings;
 }
 
 const VAT_FLAG: Partial<Record<ProductType, string>> = {
@@ -124,16 +127,14 @@ export async function buildQuote(input: QuoteInput, tx: Tx | typeof db = db): Pr
   const baseForCoupon = lines.reduce((a, l) => a + l.unitPrice * l.quantity - (l.discount ?? 0), 0);
   const coupon = await resolveCoupon(tx as Tx, input.couponCode, baseForCoupon);
 
-  const pricing = computePricing(
-    {
-      lines, charges, couponDiscount: coupon.amount, tradeInCredit: input.tradeInCredit ?? 0,
-      vatEnabled, mode: input.mode, deposit: input.deposit,
-    },
-    pricingSettings,
-  );
+  const pricingInput: PricingInput = {
+    lines, charges, couponDiscount: coupon.amount, tradeInCredit: input.tradeInCredit ?? 0,
+    vatEnabled, mode: input.mode, deposit: input.deposit,
+  };
+  const pricing = computePricing(pricingInput, pricingSettings);
 
   const minDeposit = Math.round((pricing.grandTotal * Number(settings["installment.minDepositBps"] ?? 0)) / 10000);
-  return { pricing, vatEnabled, vatOffAllowed, lines: outLines, hasVehicle, minDeposit, couponApplied: coupon.code };
+  return { pricing, vatEnabled, vatOffAllowed, lines: outLines, hasVehicle, minDeposit, couponApplied: coupon.code, pricingInput, pricingSettings };
 }
 
 export interface CreateOrderInput extends QuoteInput {
@@ -201,7 +202,7 @@ export async function createOrder(input: CreateOrderInput) {
           grandTotal: BigInt(pricing.grandTotal),
           releaseThreshold: BigInt(pricing.releaseThreshold),
           releaseState: input.mode === "INSTALLMENT" ? "BLOCKED" : null,
-          pricingSnapshot: JSON.parse(JSON.stringify(pricing)) as Prisma.InputJsonValue,
+          pricingSnapshot: JSON.parse(JSON.stringify({ ...pricing, _input: quote.pricingInput, _settings: quote.pricingSettings })) as Prisma.InputJsonValue,
           deliveryMethod: input.deliveryMethod ?? "PICKUP",
           deliveryAddress: input.delivery?.address,
           deliveryCity: input.delivery?.city,
@@ -402,4 +403,33 @@ export async function expireReservations(now = new Date()): Promise<number> {
     });
   }
   return n;
+}
+
+/**
+ * Recompute an UNPAID order with VAT forced on or off (used when a VAT exemption is approved or rejected).
+ * Uses the exact inputs and settings stored at order time, so the only thing that changes is the VAT switch.
+ */
+export async function recalculateOrderVat(orderId: string, vatEnabled: boolean, actorId: string, reason: string) {
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+    const order = await tx.order.findUniqueOrThrow({ where: { id: orderId }, include: { items: true } });
+    if (Number(order.amountPaid) > 0) throw new OrderError("VAT cannot be changed after a payment has been received.", "STATE");
+    const snap = order.pricingSnapshot as unknown as { _input: PricingInput; _settings: PricingSettings };
+    if (!snap?._input || !snap._settings) throw new OrderError("This order has no stored pricing inputs.", "STATE");
+    const pricing = computePricing({ ...snap._input, vatEnabled }, snap._settings);
+    await tx.order.update({
+      where: { id: orderId },
+      data: {
+        vatEnabled, vatTotal: BigInt(pricing.vatTotal), grandTotal: BigInt(pricing.grandTotal), releaseThreshold: BigInt(pricing.releaseThreshold),
+        vatExemptionStatus: vatEnabled ? "REJECTED" : "APPROVED",
+        pricingSnapshot: JSON.parse(JSON.stringify({ ...pricing, _input: { ...snap._input, vatEnabled }, _settings: snap._settings })) as Prisma.InputJsonValue,
+      },
+    });
+    for (let i = 0; i < order.items.length; i++) {
+      await tx.orderItem.update({ where: { id: order.items[i].id }, data: { vat: BigInt(pricing.lines[i].vat), lineTotal: BigInt(pricing.lines[i].priced + pricing.lines[i].vat) } });
+    }
+    if (order.paymentMode === "INSTALLMENT") await tx.installmentPlan.update({ where: { orderId }, data: { thresholdKobo: BigInt(pricing.releaseThreshold) } });
+    await audit({ actorId, action: vatEnabled ? "vat.exemption_rejected" : "vat.exemption_approved", targetType: "Order", targetId: orderId, before: { vatTotal: Number(order.vatTotal), grandTotal: Number(order.grandTotal) }, after: { vatTotal: pricing.vatTotal, grandTotal: pricing.grandTotal }, reason }, tx);
+    return pricing;
+  });
 }

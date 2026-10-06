@@ -90,17 +90,41 @@ export async function logout() {
 export async function changePassword(formData: FormData) {
   const u = await getSessionUser();
   if (!u) redirect("/admin/login");
+  // Form may live on the dedicated page or inside Profile; only these two internal destinations are allowed.
+  const page = formData.get("returnTo") === "profile" ? "/admin/profile" : "/admin/change-password";
+  const fail = (code: string): never => redirect(`${page}?error=${encodeURIComponent(code)}`);
+  if (!(await rateLimit("pw-change", 6, 600))) fail("Too many attempts. Please wait a few minutes.");
   const current = String(formData.get("current") ?? "");
   const next = String(formData.get("next") ?? "");
   const confirm = String(formData.get("confirm") ?? "");
   const row = await db.user.findUniqueOrThrow({ where: { id: u.id } });
-  if (!(await verifyPassword(row.passwordHash, current).catch(() => false))) redirect("/admin/change-password?error=current");
-  if (next !== confirm) redirect("/admin/change-password?error=match");
+  if (!(await verifyPassword(row.passwordHash, current).catch(() => false))) fail("current");
+  if (next !== confirm) fail("match");
   const weak = validatePasswordStrength(next);
-  if (weak) redirect(`/admin/change-password?error=${encodeURIComponent(weak)}`);
-  if (await verifyPassword(row.passwordHash, next).catch(() => false)) redirect("/admin/change-password?error=same");
+  if (weak) fail(weak);
+  if (await verifyPassword(row.passwordHash, next).catch(() => false)) fail("same");
   const updated = await db.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(next), mustChangePassword: false, sessionVersion: { increment: 1 } } });
   await createSession(updated.id, updated.sessionVersion); // other sessions are revoked by the version bump
   await audit({ actorId: u.id, action: "auth.password_changed", targetType: "User", targetId: u.id });
+  if (page === "/admin/profile") redirect("/admin/profile?notice=" + encodeURIComponent("Password changed. Other devices have been signed out."));
   redirect(u.kind === "STAFF" ? "/admin" : "/account");
+}
+
+/** Change the sign-in email. Requires the current password; the new address must be unused. */
+export async function changeEmail(formData: FormData) {
+  const u = await getSessionUser();
+  if (!u) redirect("/admin/login");
+  const back = (kind: "notice" | "error", msg: string): never => redirect(`/admin/profile?${kind}=${encodeURIComponent(msg)}`);
+  if (!(await rateLimit("email-change", 6, 600))) back("error", "Too many attempts. Please wait a few minutes.");
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  if (!z.string().email().max(120).safeParse(email).success) back("error", "Enter a valid email address.");
+  const row = await db.user.findUniqueOrThrow({ where: { id: u.id } });
+  if (!(await verifyPassword(row.passwordHash, password).catch(() => false))) back("error", "Your password is incorrect.");
+  if (email === row.email) back("error", "That is already your email address.");
+  if (await db.user.findUnique({ where: { email } })) back("error", "That email is already in use.");
+  await db.user.update({ where: { id: u.id }, data: { email } });
+  if (row.kind === "CUSTOMER") await db.customer.updateMany({ where: { userId: u.id }, data: { email } });
+  await audit({ actorId: u.id, action: "auth.email_changed", targetType: "User", targetId: u.id, before: { email: row.email }, after: { email } });
+  back("notice", `Sign-in email changed to ${email}.`);
 }

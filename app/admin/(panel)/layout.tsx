@@ -44,7 +44,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="min-w-0">
         <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 sm:px-6">
           <form action="/admin/search" className="hidden w-80 sm:block" role="search"><label htmlFor="admin-q" className="sr-only">Search everything</label><input id="admin-q" name="q" className="input" placeholder="Search customers, orders, VIN, SKU…" /></form>
-          <div className="ml-auto flex items-center gap-3 text-sm"><Link href="/admin/profile" className="font-medium text-navy hover:underline">{user.name}</Link><Link href="/" className="text-muted hover:text-brand">View site</Link>
+          <div className="ml-auto flex items-center gap-3 text-sm"><Link href="/admin/profile" className="font-medium text-navy hover:underline">{user.name}</Link><Link href="/admin/profile" className="text-muted hover:text-brand">Password and security</Link><Link href="/" className="text-muted hover:text-brand">View site</Link>
             <form action={logout}><button className="btn-ghost !min-h-9 !px-3 text-xs">Sign out</button></form></div>
         </header>
         <main className="p-4 sm:p-6">{children}</main>

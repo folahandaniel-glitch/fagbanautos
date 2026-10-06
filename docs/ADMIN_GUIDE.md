@@ -16,6 +16,7 @@ Super Admin (everything) plus ten staff roles: Inventory, Sales, Finance, Custom
 | Bulk upload stock | Excel import: download the template, fill it, upload, review the preview, import. |
 | Approve a VAT exemption | VAT > pending requests. |
 | Update a booking, import, trade-in, swap, finance application or lead | the matching item in the menu; the customer is notified in-app. |
+| Change your password, email or 2FA | Click "Password and security" in the top bar (Profile). Each staff member changes their own; the Super Admin can also reset another staff member's password under Staff and roles. |
 | Change business information | System settings (phone, email, address, social, branding, PWA, SEO, VAT, installment, payments). Changes are versioned and audited. |
 | Add or change a bank account | System settings > Bank accounts. Add as many as you like; every active account is shown to customers. Only the Super Admin can change them; every change is audited. |
 | Connect Paystack | System settings > Paystack: paste the public and secret keys, choose Test or Live, tick Enable, press "Save and test key", then set the webhook URL shown on that page in your Paystack dashboard. The secret is stored encrypted and never shown again. |

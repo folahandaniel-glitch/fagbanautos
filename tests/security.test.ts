@@ -260,3 +260,40 @@ describe("role-based authorisation is enforced by the backend", () => {
     users.SALES_MANAGER.version += 1;
   });
 });
+
+describe("password and email self-service", () => {
+  it("requires the current password, enforces strength, and signs out other sessions", async () => {
+    const { changePassword, changeEmail } = await import("../app/actions/auth");
+    const pwHash = await sessionLib.hashPassword("Old-Password-123");
+    const role = await db.role.findUniqueOrThrow({ where: { key: "SALES_MANAGER" } });
+    const u = await db.user.create({ data: { kind: "STAFF", email: `pw.${suffix}@example.test`, name: "Pw User", passwordHash: pwHash, roleId: role.id, mustChangePassword: true } });
+    const other = await db.user.create({ data: { kind: "STAFF", email: `pw2.${suffix}@example.test`, name: "Other", passwordHash: pwHash, roleId: role.id } });
+    users.PW = { id: u.id, version: u.sessionVersion };
+    const f = (o: Record<string, string>) => form({ returnTo: "profile", ...o });
+
+    await as("PW");
+    expect(await run(() => changePassword(f({ current: "wrong", next: "New-Password-456", confirm: "New-Password-456" })))).toMatch(/error=current/);
+    expect(await run(() => changePassword(f({ current: "Old-Password-123", next: "New-Password-456", confirm: "different" })))).toMatch(/error=match/);
+    expect(await run(() => changePassword(f({ current: "Old-Password-123", next: "short", confirm: "short" })))).toMatch(/error=/);
+    expect(await run(() => changePassword(f({ current: "Old-Password-123", next: "Old-Password-123", confirm: "Old-Password-123" })))).toMatch(/error=same/);
+    expect(await run(() => changePassword(f({ current: "Old-Password-123", next: "New-Password-456", confirm: "New-Password-456" })))).toMatch(/\/admin\/profile\?notice=/);
+
+    const row = await db.user.findUniqueOrThrow({ where: { id: u.id } });
+    expect(row.mustChangePassword).toBe(false);
+    expect(await sessionLib.verifyPassword(row.passwordHash, "New-Password-456")).toBe(true);
+    expect(await sessionLib.verifyPassword(row.passwordHash, "Old-Password-123")).toBe(false);
+    expect(await db.auditLog.count({ where: { action: "auth.password_changed", actorId: u.id } })).toBe(1);
+    // an older session (same user, previous version) no longer works
+    headersStub.__reset();
+    await sessionLib.createSession(u.id, users.PW.version);
+    expect(await sessionLib.getSessionUser()).toBeNull();
+
+    // email change: needs password, rejects duplicates, then works
+    await as(null);
+    await sessionLib.createSession(u.id, row.sessionVersion);
+    expect(await run(() => changeEmail(form({ email: other.email, password: "New-Password-456" })))).toMatch(/already in use/);
+    expect(await run(() => changeEmail(form({ email: `new.${suffix}@example.test`, password: "nope" })))).toMatch(/incorrect/);
+    expect(await run(() => changeEmail(form({ email: `new.${suffix}@example.test`, password: "New-Password-456" })))).toMatch(/notice=/);
+    expect((await db.user.findUniqueOrThrow({ where: { id: u.id } })).email).toBe(`new.${suffix}@example.test`);
+  });
+});

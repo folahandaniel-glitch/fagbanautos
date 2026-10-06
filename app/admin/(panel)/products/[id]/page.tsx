@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { saveProduct } from "@/app/actions/admin-products";
 import { PageHeader, Notice } from "@/components/admin/ui";
 import { ImageManager } from "@/components/admin/ImageManager";
+import { PhotoUploader } from "@/components/admin/PhotoUploader";
 
 export const metadata: Metadata = { title: "Edit product", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -19,7 +20,7 @@ export default async function ProductEditor({ params, searchParams }: { params: 
   const { id } = await params;
   const sp = await searchParams;
   const isNew = id === "new";
-  const p = isNew ? null : await db.product.findUnique({ where: { id }, include: { vehicle: true, images: { orderBy: { sortOrder: "asc" } }, compat: true } });
+  const p = isNew ? null : await db.product.findUnique({ where: { id }, include: { brand: true, vehicle: true, images: { orderBy: { sortOrder: "asc" } }, compat: true } });
   if (!isNew && !p) notFound();
   const type = (p?.type ?? (TYPES.includes(sp.type as ProductType) ? sp.type : "PART")) as ProductType;
   const isVehicle = type === "VEHICLE";
@@ -78,6 +79,9 @@ export default async function ProductEditor({ params, searchParams }: { params: 
 
           <section className="card grid gap-4 p-5 sm:grid-cols-2">
             <h2 className="font-display text-lg font-bold text-navy sm:col-span-2">SEO and details</h2>
+            <div className="sm:col-span-2 rounded-xl bg-brand-50 p-3 text-xs text-muted"><strong className="text-navy">Automatic pictures from the vendor.</strong> Give the product page on the vendor website (best), or the vendor official website once per brand. The system reads the pictures from that site, compresses them and adds them. Only use pictures you are allowed to use as an authorised seller.</div>
+            {field("sourcePageUrl", "Product page on the vendor website (https://…)", p?.sourcePageUrl, { type: "url", placeholder: "https://www.brand.com/products/this-item" })}
+            {field("vendorSite", "Vendor official website (saved to the selected brand)", p?.brand?.websiteUrl, { placeholder: "https://www.brand.com" })}
             {field("videoUrl", "Video URL", p?.videoUrl)}{field("warranty", "Warranty", p?.warranty)}
             {field("origin", "Origin country", p?.origin)}
             <div><label className="label" htmlFor="condition">Condition</label><select id="condition" name="condition" defaultValue={p?.condition ?? ""} className="input" disabled={!canSave}><option value="">n/a</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c.replace(/_/g, " ")}</option>)}</select></div>
@@ -102,11 +106,13 @@ export default async function ProductEditor({ params, searchParams }: { params: 
               {field("lowStockThreshold", "Low-stock threshold", p?.lowStockThreshold ?? 3, { inputMode: "numeric" })}
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="allowBackorder" defaultChecked={p?.allowBackorder} disabled={!canSave} className="h-4 w-4" /> Allow backorder</label></section>
           )}
+          {canSave && isNew && <PhotoUploader />}
+          {canSave && !isNew && <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="findPhotos" className="mt-1 h-4 w-4" /> <span>Search for more pictures from the vendor website when I save</span></label>}
           {canSave ? <button className="btn-primary w-full">{isNew ? "Create" : "Save changes"}</button> : <p className="text-sm text-muted">Read-only for your role.</p>}
         </aside>
       </form>
       <div className="mt-6 max-w-5xl">
-        {p ? <ImageManager productId={p.id} productName={p.name} canEdit={canSave} images={p.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, credit: i.credit, sourceUrl: i.sourceUrl, isPlaceholder: i.isPlaceholder, width: i.width, height: i.height, bytes: i.bytes }))} /> : <p className="card p-5 text-sm text-muted"><strong className="text-navy">Photos:</strong> after you create this listing you can upload several photos (compressed automatically), or the system will find suitable licensed photos for you.</p>}
+        {p ? <ImageManager productId={p.id} productName={p.name} canEdit={canSave} images={p.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, credit: i.credit, sourceUrl: i.sourceUrl, isPlaceholder: i.isPlaceholder, width: i.width, height: i.height, bytes: i.bytes }))} /> : <p className="card p-5 text-sm text-muted"><strong className="text-navy">Photos:</strong> you can add pictures in the box on the right while creating this listing. The system also looks for more on the vendor website and in licensed libraries. After saving you can add, reorder or replace pictures here.</p>}
       </div>
     </>
   );

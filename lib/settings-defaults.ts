@@ -141,6 +141,12 @@ export const SETTING_DEFS: Record<string, SettingDef> = {
   "pages.about.story": { value: "FAGDAN Automotive Group is a Nigerian automotive commerce company built on one idea: buying a car, a part or a service should be clear, fair and safe.\n\nThrough FAGDAN AutoGallery we offer new and quality used vehicles, genuine and aftermarket parts, accessories and car technology, auto care, vehicle imports and flexible installment plans, all with transparent pricing, verified listings and secure online payment.\n\nWe are driven by trust and powered by choice. Every customer is treated as a long-term relationship, not a single sale.", group: "pagetext", label: "About page: our story (blank lines start a new paragraph)", type: "textarea" },
   "pages.about.teamTitle": { value: "The people behind FAGDAN", group: "pagetext", label: "About page: team heading" },
   "pages.about.teamIntro": { value: "FAGDAN is owned and led by its founders, who stand behind every vehicle and every promise we make.", group: "pagetext", label: "About page: team introduction", type: "textarea" },
+  "pages.footer.divisionsHeading": { value: "Divisions", group: "pagetext", label: "Footer: divisions heading" },
+  "pages.footer.companyHeading": { value: "Company", group: "pagetext", label: "Footer: company heading" },
+  "pages.footer.contactHeading": { value: "Contact", group: "pagetext", label: "Footer: contact heading" },
+  "pages.footer.companyLinks": { value: "About | /about\nContact | /contact\nFAQ | /faq\nSell or swap your car | /sell-or-swap", group: "pagetext", label: "Footer: company links (one per line: Label | /page)", type: "textarea" },
+  "pages.footer.whatsappLabel": { value: "WhatsApp enquiry", group: "pagetext", label: "Footer: WhatsApp button text" },
+  "pages.footer.whatsappMessage": { value: "Hello FAGDAN, I would like to make an enquiry.", group: "pagetext", label: "WhatsApp: message that opens in the chat", type: "textarea" },
   "pages.about.points": { value: "Trust: transparent pricing and verified listings\nChoice: vehicles, parts, accessories, care, finance and imports\nTechnology: secure online payments and live tracking\nService: people who pick up the phone", group: "pagetext", label: "About page highlights (one per line)", type: "textarea" },
   "pages.contact.intro": { value: "Reach us by phone, WhatsApp, email or the form below. We reply within one business day.", group: "pagetext", label: "Contact page intro", type: "textarea" },
   // Notifications

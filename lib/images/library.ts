@@ -3,6 +3,8 @@ import { db } from "../db";
 import { storeFile } from "../uploads";
 import { downloadImage, searchCommons, type FoundPhoto } from "./commons";
 import { optimiseImage } from "./optimize";
+import { fetchPublicImage } from "./safe-fetch";
+import { findVendorPhotos, type VendorPhoto } from "./vendor";
 
 export interface StoredPhoto { url: string; width: number; height: number; bytes: number; credit: string | null; sourceUrl: string | null }
 
@@ -80,10 +82,29 @@ export async function attachPhotos(productId: string, photos: StoredPhoto[], alt
 }
 
 /** Automatic photo finder for one product. Returns how many photos were added. */
+async function storeVendorPhotos(found: VendorPhoto[], want: number): Promise<StoredPhoto[]> {
+  const out: StoredPhoto[] = [];
+  for (const f of found) {
+    if (out.length >= want) break;
+    try {
+      const opt = await optimiseImage(await fetchPublicImage(f.url));
+      if (opt.width < 500 || opt.height < 300) continue; // logos, icons and thumbnails
+      const url = await storeFile(opt.bytes, opt.ext, opt.mime, "products");
+      out.push({ url, width: opt.width, height: opt.height, bytes: opt.bytes.length, credit: f.credit, sourceUrl: f.sourceUrl });
+    } catch (e) { console.warn("[vendor-photos] skip", f.url, (e as Error).message); }
+  }
+  return out;
+}
+
+/** Automatic photo finder for one product: the vendor's own website first (exact product page link, else a search of the brand site), then licensed photos from Wikimedia Commons. Returns how many were added. */
 export async function autoPhotosForProduct(productId: string, want = 3): Promise<number> {
-  const p = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { vehicle: true, category: true } });
-  const queries = photoQueries({ type: p.type, name: p.name, category: p.category?.name, make: p.vehicle?.makeName, model: p.vehicle?.modelName, year: p.vehicle?.year });
-  const photos = await findStoredPhotos(queries, want, p.type === "VEHICLE");
+  const p = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { vehicle: true, category: true, brand: true } });
+  const vendor = p.sourcePageUrl || p.brand?.websiteUrl ? await storeVendorPhotos(await findVendorPhotos({ pageUrl: p.sourcePageUrl, siteUrl: p.brand?.websiteUrl, name: p.name, brand: p.brand?.name, want }), want) : [];
+  let photos = vendor;
+  if (photos.length < want) {
+    const queries = photoQueries({ type: p.type, name: p.name, category: p.category?.name, make: p.vehicle?.makeName, model: p.vehicle?.modelName, year: p.vehicle?.year });
+    photos = [...vendor, ...(await findStoredPhotos(queries, want - vendor.length, p.type === "VEHICLE"))];
+  }
   return attachPhotos(productId, photos, p.name);
 }
 

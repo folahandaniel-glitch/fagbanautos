@@ -192,6 +192,7 @@ model Brand {
   country  String?
   isVehicleMake Boolean @default(false)
   logoUrl  String?
+  websiteUrl String? // official vendor website, used by the automatic photo finder
   products Product[]
   models   VehicleModel[]
 }
@@ -245,6 +246,7 @@ model Product {
   allowBackorder Boolean      @default(false)
   isDemo        Boolean       @default(false)
   needsImage    Boolean       @default(false)
+  sourcePageUrl String? // the product page on the vendor website; the photo finder reads pictures from it
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   vehicle       Vehicle?

@@ -15,7 +15,7 @@ const RULE: UploadRule = { maxBytes: 4 * 1024 * 1024, kinds: ["image"] };
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user || user.kind !== "STAFF") return Response.json({ error: "Please sign in." }, { status: 401 });
-  if (!user.permissions.has("content:edit")) return Response.json({ error: "You do not have permission to change site pictures." }, { status: 403 });
+  if (!["content:edit", "products:create", "products:edit", "vehicles:create", "vehicles:edit", "inventory:create", "inventory:edit"].some((k) => user.permissions.has(k))) return Response.json({ error: "You do not have permission to upload pictures." }, { status: 403 });
   if (!(await rateLimit("site-image", 60, 600))) return Response.json({ error: "Too many uploads. Please wait a few minutes." }, { status: 429 });
   const form = await req.formData().catch(() => null);
   const file = form?.get("file");

@@ -44,3 +44,9 @@ Replace placeholder bank accounts, add Paystack keys, enter real contact details
 ## Carousel and About page
 - **Admin > Carousel:** add, reorder, hide or delete slides (picture upload, headline, tag, button text and link). With no slides, the site fills the banner with featured cars and accessories. Turn it on/off and set the speed in Settings > Homepage text.
 - **Admin > About and team:** add portraits and wording for the founders and any other people. Use "Create the founder cards" the first time. The story and headings are in Settings > Page text. All of this needs the `content:edit` permission, so it can be given to an assigned admin.
+
+## Vendor pictures on Add Product
+- On a product, fill **Product page on the vendor website** (best) or the brand's **Vendor official website** (saved to the brand). On save, the system reads the pictures from that site (robots.txt respected), compresses them and adds up to three, then fills any gap from licensed libraries. Pictures show a credit line.
+- The **Pictures** box on the Add Product form accepts as many of your own pictures as you like (max 12). Reorder, replace or delete them later under Photos.
+- Vendor pictures are usually copyrighted. Use them only if you are an authorised seller or have the vendor's permission, and replace any you are unsure about.
+- Footer headings and links and the WhatsApp message are editable in Settings > Page text.

@@ -22,6 +22,8 @@ async function need(type: ProductType | "ANY", action: "create" | "edit" | "dele
   catch (e) { if (e instanceof AuthError) redirect(e.status === 401 ? "/admin/login" : `${path}?error=${encodeURIComponent("You do not have permission to do that.")}`); throw e; }
 }
 
+const httpsOrNull = (v: string) => (/^https:\/\/[^\s]+$/i.test(v) ? v.slice(0, 1000) : null);
+const ownPhoto = (u: string) => /^https:\/\//i.test(u) || /^\/api\/files\/products\//.test(u);
 const num = (v: FormDataEntryValue | null) => (v == null || v === "" ? undefined : Number(String(v).replace(/[^\d.-]/g, "")));
 const str = (v: FormDataEntryValue | null) => (v == null ? "" : String(v).trim());
 
@@ -52,6 +54,7 @@ export async function saveProduct(formData: FormData) {
     vatApplicable: formData.get("vatApplicable") === "on", condition: (str(formData.get("condition")) || null) as never, origin: str(formData.get("origin")) || null,
     partGrade: (str(formData.get("partGrade")) || null) as never, partNumber: str(formData.get("partNumber")) || null, warranty: str(formData.get("warranty")) || null,
     features: str(formData.get("features")).split("\n").map((s) => s.trim()).filter(Boolean), videoUrl: str(formData.get("videoUrl")) || null,
+    sourcePageUrl: httpsOrNull(str(formData.get("sourcePageUrl"))),
     seoTitle: str(formData.get("seoTitle")) || null, seoDescription: str(formData.get("seoDescription")) || null, status: d.status, featured: formData.get("featured") === "on",
     lowStockThreshold: Math.max(0, Math.floor(num(formData.get("lowStockThreshold")) ?? 3)), allowBackorder: formData.get("allowBackorder") === "on",
   };
@@ -90,7 +93,18 @@ export async function saveProduct(formData: FormData) {
       await audit({ actorId: user.id, action: id ? "product.update" : "product.create", targetType: "Product", targetId: p.id, after: { sku: p.sku, name: p.name, status: p.status } }, tx);
       return p;
     });
-    if (!id) await ensurePhotos(saved.id);
+    const vendorSite = httpsOrNull(str(formData.get("vendorSite")).replace(/^(?!https?:\/\/)(.+)$/i, "https://$1"));
+    if (vendorSite && common.brandId) await db.brand.update({ where: { id: common.brandId }, data: { websiteUrl: vendorSite } });
+    // Pictures uploaded on the form (already compressed and stored) become the gallery, in the order given.
+    const uploaded = formData.getAll("photoUrl").map(String).filter(ownPhoto).slice(0, 12);
+    if (uploaded.length) {
+      const start = await db.productImage.count({ where: { productId: saved.id, isPlaceholder: false } });
+      await db.productImage.deleteMany({ where: { productId: saved.id, isPlaceholder: true } });
+      await db.productImage.createMany({ data: uploaded.map((url, i) => ({ productId: saved.id, url, alt: `${d.name} (photo ${start + i + 1})`, sortOrder: start + i, isPlaceholder: false })) });
+      await db.product.update({ where: { id: saved.id }, data: { needsImage: false } });
+    }
+    // Then look for more on the vendor's official website (and licensed libraries) when the listing has fewer than 3 real photos.
+    if (!id || formData.get("findPhotos") === "on") await ensurePhotos(saved.id, Math.max(0, 3 - uploaded.length));
     revalidatePath("/admin/inventory");
     revalidatePath("/", "layout");
     go(`/admin/products/${saved.id}`, "notice", id ? "Saved." : "Created. Photos were added automatically where possible; please review them below.");
@@ -128,9 +142,9 @@ export async function adjustStock(formData: FormData) {
 }
 
 /** New listings get licensed photos automatically; if none are found a tidy illustration is used and the item is flagged for a real photo. */
-async function ensurePhotos(productId: string) {
-  try {
-    await Promise.race([autoPhotosForProduct(productId, 3), new Promise((_, reject) => setTimeout(() => reject(new Error("photo search timed out")), 30_000))]);
+async function ensurePhotos(productId: string, want = 3) {
+  if (want > 0) try {
+    await Promise.race([autoPhotosForProduct(productId, want), new Promise((_, reject) => setTimeout(() => reject(new Error("photo search timed out")), 30_000))]);
   } catch (e) {
     console.warn("[ensurePhotos]", (e as Error).message);
   }

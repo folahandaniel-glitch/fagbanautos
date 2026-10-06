@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { db } from "@/lib/db";
+import { getContent } from "@/lib/content";
 import { getSite, displayPhone, waLink } from "@/lib/site";
 import { getDivisions, divisionHref } from "@/lib/divisions";
 import { cartCount } from "@/lib/cart";
@@ -59,7 +60,7 @@ export async function Header() {
 }
 
 export async function Footer() {
-  const [site, divisions, pages] = await Promise.all([getSite(), getDivisions(), db.cmsPage.findMany({ where: { published: true }, select: { slug: true, title: true } })]);
+  const [site, divisions, c, pages] = await Promise.all([getSite(), getDivisions(), getContent(), db.cmsPage.findMany({ where: { published: true }, select: { slug: true, title: true } })]);
   const legal = pages.filter((p) => ["terms", "privacy", "refunds", "installment-terms", "cookies"].includes(p.slug));
   return (
     <footer className="mt-16 bg-navy text-white/80">
@@ -75,29 +76,26 @@ export async function Footer() {
           )}
         </div>
         <div>
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">Divisions</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">{c.t("pages.footer.divisionsHeading")}</h2>
           <ul className="mt-3 space-y-2 text-sm">
             {divisions.map((d) => <li key={d.id}><Link href={divisionHref(d.slug)} className="hover:text-accent">{d.name}</Link></li>)}
           </ul>
         </div>
         <div>
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">Company</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">{c.t("pages.footer.companyHeading")}</h2>
           <ul className="mt-3 space-y-2 text-sm">
-            <li><Link href="/about" className="hover:text-accent">About</Link></li>
-            <li><Link href="/contact" className="hover:text-accent">Contact</Link></li>
-            <li><Link href="/faq" className="hover:text-accent">FAQ</Link></li>
-            <li><Link href="/sell-or-swap" className="hover:text-accent">Sell or swap your car</Link></li>
+            {c.lines("pages.footer.companyLinks").map((l) => l.split("|")).filter((x) => x.length === 2 && x[1].trim().startsWith("/")).map(([label, href]) => <li key={href.trim()}><Link href={href.trim()} className="hover:text-accent">{label.trim()}</Link></li>)}
             {legal.map((p) => <li key={p.slug}><Link href={`/legal/${p.slug}`} className="hover:text-accent">{p.title}</Link></li>)}
           </ul>
         </div>
         <div>
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">Contact</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-white">{c.t("pages.footer.contactHeading")}</h2>
           <address className="mt-3 space-y-2 text-sm not-italic">
             <p>{site.address}</p>
             <p><a href={`tel:${site.phone1}`} className="hover:text-accent">{displayPhone(site.phone1)}</a> · <a href={`tel:${site.phone2}`} className="hover:text-accent">{displayPhone(site.phone2)}</a></p>
             <p><a href={`mailto:${site.email}`} className="hover:text-accent">{site.email}</a></p>
             <p>{site.hours}</p>
-            <p><a href={waLink(site.phone1, "Hello FAGDAN, I would like to make an enquiry.")} target="_blank" rel="noopener noreferrer" className="btn-gold !min-h-10 mt-2">WhatsApp enquiry</a></p>
+            <p><a href={waLink(site.phone1, c.t("pages.footer.whatsappMessage"))} target="_blank" rel="noopener noreferrer" className="btn-gold !min-h-10 mt-2">{c.t("pages.footer.whatsappLabel")}</a></p>
           </address>
         </div>
       </div>
@@ -115,9 +113,9 @@ export async function Footer() {
 }
 
 export async function WhatsAppFab() {
-  const site = await getSite();
+  const [site, c] = await Promise.all([getSite(), getContent()]);
   return (
-    <a href={waLink(site.phone1, "Hello FAGDAN, I would like to make an enquiry.")} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp"
+    <a href={waLink(site.phone1, c.t("pages.footer.whatsappMessage"))} target="_blank" rel="noopener noreferrer" aria-label="Chat on WhatsApp"
       className="fixed bottom-20 right-4 z-30 grid h-12 w-12 place-items-center rounded-full bg-[#25D366] text-white shadow-lg md:bottom-6">
       <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.2 14.2c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8 0-1.3.7-2 .9-2.2.3-.3.6-.3.8-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.3.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.2.1.8-.1 1.4z" /></svg>
     </a>

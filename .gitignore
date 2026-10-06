@@ -53,3 +53,7 @@ start.log
 .next-dev.log
 uploads/
 .seed-credentials*
+
+.dev.log
+.photos.log
+.pgdev.log

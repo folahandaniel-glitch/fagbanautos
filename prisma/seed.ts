@@ -8,7 +8,7 @@
  * .seed-credentials.txt (git-ignored) and never to source control or logs.
  */
 import "dotenv/config";
-import { writeFileSync } from "node:fs";
+import { appendFileSync, existsSync } from "node:fs";
 import { PrismaClient, type Condition } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
 import { ALL_PERMISSION_KEYS, ROLES, grantsToKeys } from "../lib/rbac/permissions";
@@ -28,10 +28,8 @@ const allowDemo = !isProd || process.env.ALLOW_DEMO_SEED === "true";
 const credentials: string[] = [];
 
 async function seedAccess() {
-  for (const key of ALL_PERMISSION_KEYS) {
-    const [resource, action] = key.split(":");
-    await db.permission.upsert({ where: { key }, create: { key, resource, action }, update: {} });
-  }
+  // One batched statement (idempotent): hundreds of single upserts are far too slow against a remote database.
+  await db.permission.createMany({ data: ALL_PERMISSION_KEYS.map((key) => { const [resource, action] = key.split(":"); return { key, resource, action }; }), skipDuplicates: true });
   for (const r of ROLES) {
     const role = await db.role.upsert({ where: { key: r.key }, create: { key: r.key, name: r.name, description: r.description, isSystem: true }, update: { name: r.name, description: r.description } });
     const keys = grantsToKeys(r.grants);
@@ -63,7 +61,11 @@ async function seedStaff() {
     const role = await db.role.findUniqueOrThrow({ where: { key: s.role } });
     const pw = randomPassword(16);
     await db.user.create({ data: { kind: "STAFF", email: s.email, name: s.name, passwordHash: await hash(pw, ARGON), roleId: role.id, mustChangePassword: true } });
-    credentials.push(`${s.role.padEnd(22)} ${s.email.padEnd(34)} ${pw}`);
+    const line = `${s.role.padEnd(22)} ${s.email.padEnd(34)} ${pw}`;
+    credentials.push(line);
+    // Saved immediately: a dropped connection later in the seed must never lose a one-time password.
+    if (!existsSync(".seed-credentials.txt")) appendFileSync(".seed-credentials.txt", "FAGDAN staff one-time passwords (forced change on first login). KEEP PRIVATE, DO NOT COMMIT.\n\n");
+    appendFileSync(".seed-credentials.txt", line + "\n");
   }
   console.log(`staff accounts created: ${credentials.length}`);
 }
@@ -334,7 +336,6 @@ async function main() {
   } else console.log("demo seed skipped (production)");
 
   if (credentials.length) {
-    writeFileSync(".seed-credentials.txt", `FAGDAN staff one-time passwords (forced change on first login). KEEP PRIVATE, DO NOT COMMIT.\n\n${credentials.join("\n")}\n`);
     console.log("one-time staff passwords written to .seed-credentials.txt");
   }
 }

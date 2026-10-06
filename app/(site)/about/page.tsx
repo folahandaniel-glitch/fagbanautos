@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { getContent } from "@/lib/content";
 import { getTeam } from "@/lib/site-content";
 
@@ -37,9 +38,10 @@ export default async function About() {
                 )}
               </div>
               <div className="p-5">
-                <h3 className="font-display text-xl font-bold text-navy">{m.name}</h3>
+                <h3 className="font-display text-xl font-bold text-navy">{m.id ? <Link href={`/about/team/${m.id}`} className="hover:underline">{m.name}</Link> : m.name}</h3>
                 <p className="text-sm font-semibold text-accent-600">{m.role}</p>
-                {m.bio && <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted">{m.bio}</p>}
+                {m.bio && <p className="mt-3 line-clamp-4 whitespace-pre-line text-sm leading-relaxed text-muted">{m.bio}</p>}
+                {m.id && <Link href={`/about/team/${m.id}`} className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">View profile</Link>}
               </div>
             </li>
           ))}

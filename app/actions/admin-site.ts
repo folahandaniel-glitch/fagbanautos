@@ -76,7 +76,11 @@ export async function saveMember(formData: FormData) {
   const parsed = memberSchema.safeParse({ name: str(formData.get("name")), role: str(formData.get("role")), bio: str(formData.get("bio")), photoUrl: str(formData.get("photoUrl")) });
   if (!parsed.success) go(P, "error", parsed.error.issues[0]?.message ?? "Please check the details.");
   const d = parsed.data;
-  const data = { name: d.name, role: d.role, bio: d.bio || null, photoUrl: d.photoUrl || null, active: formData.get("active") === "on" };
+  const data = { name: d.name, role: d.role, bio: d.bio || null, photoUrl: d.photoUrl || null, active: formData.get("active") === "on", userId: str(formData.get("userId")) || null };
+  if (data.userId) {
+    const clash = await db.teamMember.findFirst({ where: { userId: data.userId, ...(id ? { id: { not: id } } : {}) }, select: { name: true } });
+    if (clash) go(P, "error", `That login is already linked to ${clash.name}.`);
+  }
   if (id) await db.teamMember.update({ where: { id }, data });
   else {
     const last = await db.teamMember.aggregate({ _max: { sortOrder: true } });
@@ -85,6 +89,28 @@ export async function saveMember(formData: FormData) {
   await audit({ actorId: user.id, action: id ? "team.update" : "team.create", targetType: "TeamMember", targetId: id || "new", after: { name: d.name } });
   done();
   go(P, "notice", id ? "Saved." : "Person added.");
+}
+
+/** Lets a staff member edit (or create) their own team card from Profile. They cannot touch anyone else's card or reorder/hide it. */
+export async function saveMyTeamProfile(formData: FormData) {
+  const P = "/admin/profile";
+  let user;
+  try { user = await requirePermission("content:view"); }
+  catch (e) { if (e instanceof AuthError) redirect("/admin/login"); throw e; }
+  const mine = await db.teamMember.findUnique({ where: { userId: user.id } });
+  if (!mine && !user.permissions.has("content:edit")) go(P, "error", "You do not have permission to create a team profile. Ask a Super Admin.");
+  const parsed = memberSchema.safeParse({ name: str(formData.get("name")), role: str(formData.get("role")), bio: str(formData.get("bio")), photoUrl: str(formData.get("photoUrl")) });
+  if (!parsed.success) go(P, "error", parsed.error.issues[0]?.message ?? "Please check the details.");
+  const d = parsed.data;
+  const data = { name: d.name, role: d.role, bio: d.bio || null, photoUrl: d.photoUrl || null };
+  if (mine) await db.teamMember.update({ where: { id: mine.id }, data });
+  else {
+    const last = await db.teamMember.aggregate({ _max: { sortOrder: true } });
+    await db.teamMember.create({ data: { ...data, userId: user.id, active: true, sortOrder: (last._max.sortOrder ?? -1) + 1 } });
+  }
+  await audit({ actorId: user.id, action: mine ? "team.update_own" : "team.create_own", targetType: "TeamMember", targetId: mine?.id ?? "new", after: { name: d.name } });
+  done();
+  go(P, "notice", "Your team profile is saved.");
 }
 
 export async function moveMember(formData: FormData) {

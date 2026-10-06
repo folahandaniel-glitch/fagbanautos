@@ -1041,6 +1041,7 @@ model TeamMember {
   role      String
   bio       String?
   photoUrl  String?
+  userId    String?  @unique // staff login that may edit this card from Profile
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())

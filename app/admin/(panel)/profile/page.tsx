@@ -7,6 +7,8 @@ import { decryptSecret } from "@/lib/crypto";
 import { totpUri } from "@/lib/totp";
 import { begin2fa, confirm2fa, disable2fa } from "@/app/actions/admin-users";
 import { PageHeader, Notice, Pill } from "@/components/admin/ui";
+import { ImageField } from "@/components/admin/ImageField";
+import { saveMyTeamProfile } from "@/app/actions/admin-site";
 
 export const metadata: Metadata = { title: "My profile", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -16,6 +18,8 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
   const u = await requireStaffPage();
   const sp = await searchParams;
   const row = await db.user.findUniqueOrThrow({ where: { id: u.id } });
+  const card = await db.teamMember.findUnique({ where: { userId: u.id } });
+  const canTeam = !!card || u.permissions.has("content:edit");
   const pending = sp.setup && row.totpSecretEnc && !row.totpEnabled ? decryptSecret(row.totpSecretEnc) : null;
   return (
     <>
@@ -40,6 +44,19 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
           <button className="btn-primary">Change email</button>
         </form>
       </div>
+      {canTeam && (
+        <form action={saveMyTeamProfile} className="card mt-6 max-w-3xl space-y-4 p-5" aria-labelledby="tp-h">
+          <h2 id="tp-h" className="font-display text-lg font-bold text-navy">Team profile</h2>
+          <p className="text-sm text-muted">{card ? "This is how you appear on the public About page." : "Create your card on the public About page."}</p>
+          <ImageField name="photoUrl" label="Your portrait" kind="portrait" defaultValue={card?.photoUrl} />
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div><label className="label" htmlFor="tp-name">Full name</label><input id="tp-name" name="name" required maxLength={120} defaultValue={card?.name ?? u.name} className="input" /></div>
+            <div><label className="label" htmlFor="tp-role">Title</label><input id="tp-role" name="role" required maxLength={120} defaultValue={card?.role ?? "Co-Founder"} className="input" /></div>
+            <div className="sm:col-span-2"><label className="label" htmlFor="tp-bio">About you</label><textarea id="tp-bio" name="bio" maxLength={2000} defaultValue={card?.bio ?? ""} className="input min-h-28" /></div>
+          </div>
+          <button className="btn-primary">Save team profile</button>
+        </form>
+      )}
       <section className="card mt-6 max-w-xl space-y-4 p-5">
         <h2 className="font-display text-lg font-bold text-navy">Two-factor authentication</h2>
         <p className="text-sm text-muted">Protects your account with a 6-digit code from an authenticator app (Google Authenticator, Microsoft Authenticator, Authy). Strongly recommended for every staff account.</p>

@@ -12,7 +12,7 @@ export default async function TeamAdmin({ searchParams }: { searchParams: Promis
   const user = await requireStaffPage("content:view");
   const sp = await searchParams;
   const canEdit = user.permissions.has("content:edit");
-  const people = await db.teamMember.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] });
+  const [people, staff] = await Promise.all([db.teamMember.findMany({ orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] }), db.user.findMany({ where: { status: "ACTIVE" }, orderBy: { name: "asc" }, select: { id: true, name: true, email: true } })]);
   const form = (m: (typeof people)[number] | null) => (
     <form action={saveMember} className="mt-3 grid gap-3">
       {m && <input type="hidden" name="id" value={m.id} />}
@@ -22,6 +22,7 @@ export default async function TeamAdmin({ searchParams }: { searchParams: Promis
         <div><label className="label" htmlFor={`r-${m?.id}`}>Title (for example Founder, Co-founder)</label><input id={`r-${m?.id}`} name="role" defaultValue={m?.role} required maxLength={120} className="input" /></div>
         <div className="sm:col-span-2"><label className="label" htmlFor={`bio-${m?.id}`}>About this person</label><textarea id={`bio-${m?.id}`} name="bio" defaultValue={m?.bio ?? ""} maxLength={2000} className="input min-h-28" /></div>
       </div>
+      <div><label className="label" htmlFor={`u-${m?.id}`}>Linked login (lets this person edit their own card from Profile)</label><select id={`u-${m?.id}`} name="userId" defaultValue={m?.userId ?? ""} className="input"><option value="">Not linked</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name} ({u.email})</option>)}</select></div>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="active" defaultChecked={m?.active ?? true} className="h-4 w-4" /> Show on the About page</label>
       <div><button className="btn-primary">{m ? "Save" : "Add person"}</button></div>
     </form>

@@ -2,8 +2,8 @@ import { db } from "@/lib/db";
 
 /** Shown on the About page until the admin creates real cards in Admin > About and team. Wording is a starting point, not a claim of fact. */
 export const DEFAULT_TEAM = [
-  { name: "Banjo Folahan Daniel", role: "Founder", bio: "Founder of FAGDAN Automotive Group, committed to making car buying in Nigeria transparent, fair and safe." },
-  { name: "Mr Kunle O. Fagbure", role: "Co-founder", bio: "Co-owner of FAGDAN Automotive Group, helping build a business customers can trust for the long term." },
+  { name: "Banjo Folahan Daniel", role: "Co-Founder", bio: "Co-Founder of FAGDAN Automotive Group, committed to making car buying in Nigeria transparent, fair and safe." },
+  { name: "Mr Kunle O. Fagbure", role: "Co-Founder", bio: "Co-Founder of FAGDAN Automotive Group, helping build a business customers can trust for the long term." },
 ];
 
 export interface Person { id: string | null; name: string; role: string; bio: string | null; photoUrl: string | null }

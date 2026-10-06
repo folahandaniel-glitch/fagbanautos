@@ -155,6 +155,11 @@ export async function createOrder(input: CreateOrderInput) {
   const holdHours = Number(settings["inventory.reservationHoldHours"]);
   const requireReason = settings["vat.requireReason"] === true;
   const requireApproval = settings["vat.requireApproval"] === true;
+  // Sample (demo) listings cannot be bought unless the owner has switched that on (testing only).
+  if (!input.isDemo && settings["catalogue.allowDemoPurchases"] !== true) {
+    const demo = await db.product.count({ where: { id: { in: input.lines.map((l) => l.productId) }, isDemo: true } });
+    if (demo > 0) throw new OrderError("This is a sample listing and cannot be purchased online. Please contact us to enquire about similar stock.", "UNAVAILABLE");
+  }
   if (input.vatOffRequested && requireReason && !(input.vatOffReason && input.vatOffReason.trim().length >= 5)) {
     throw new OrderError("Please state the reason for switching VAT off.", "VAT_NOT_ALLOWED");
   }

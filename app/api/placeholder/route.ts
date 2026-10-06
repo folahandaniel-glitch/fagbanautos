@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { iconFor } from "@/lib/placeholder-icons";
 
 /**
  * Generated placeholder imagery for demo inventory. These are clearly labelled illustrations,
@@ -43,15 +44,15 @@ export function GET(req: NextRequest) {
   } else {
     const label = esc(q.get("label") ?? "Product"), brand = esc(q.get("brand") ?? "");
     body = `
-      <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#eaf0fa"/><stop offset="1" stop-color="#cfdcf5"/></linearGradient></defs>
+      <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4f7fd"/><stop offset="1" stop-color="#d6e2f8"/></linearGradient><radialGradient id="glow"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/></radialGradient></defs>
       <rect width="${w}" height="${h}" fill="url(#bg)"/>
-      <g transform="translate(600,360)"><circle r="170" fill="#0b3a8f" opacity=".10"/><circle r="120" fill="#0b3a8f" opacity=".14"/>
-      <path d="M-70 40 L-30 -60 L70 -60 L110 40 Z" fill="#0b3a8f"/><rect x="-90" y="40" width="220" height="22" rx="6" fill="#c9a227"/></g>
-      <text x="600" y="640" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="52" font-weight="700" fill="#071f4d">${label}</text>
-      <text x="600" y="700" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="36" fill="#5b6475">${brand}</text>`;
+      <circle cx="600" cy="340" r="300" fill="url(#glow)"/>
+      <ellipse cx="600" cy="545" rx="190" ry="22" fill="#071f4d" opacity=".12"/>
+      <g transform="translate(600,330) scale(1.45)">${iconFor(label)}</g>
+      <text x="600" y="660" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="46" font-weight="700" fill="#071f4d">${label}</text>
+      <text x="600" y="712" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="30" fill="#5b6475">${brand}</text>`;
   }
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">${body}
-    <g><rect x="${w - 250}" y="30" width="210" height="48" rx="24" fill="#c9a227"/><text x="${w - 145}" y="62" text-anchor="middle" font-family="Arial" font-size="24" font-weight="700" fill="#071f4d">DEMO IMAGE</text></g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" role="img">${body}</svg>`;
   return new Response(svg, {
     headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=31536000, immutable", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'" },
   });

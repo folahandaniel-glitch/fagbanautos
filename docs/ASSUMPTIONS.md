@@ -33,3 +33,7 @@ Tax invoice, quotation, payment receipt, payment statement, installment statemen
 ## Compliance items needing real-world action
 
 NDPA 2023 / GAID 2025 (privacy notice review, DCPMI assessment/registration, breach runbook), SCUML registration and KYC process (motor dealers are DNFBPs), tax adviser review of VAT and installment treatment, legal review of all CMS legal pages.
+
+## Images and sample listings
+- Automatic product photos come from Wikimedia Commons, accepting only CC0, public domain, CC BY and CC BY-SA files, with the credit saved on the image. They are a convenience, not a licence review: staff should replace them with own photos of the actual stock.
+- Sample (demo) listings exist so the storefront looks complete. They are hidden from search engines (`seo.indexDemo` off) and cannot be purchased online by default.

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import Image from "next/image";
 import { login } from "@/app/actions/auth";
 
@@ -16,7 +17,7 @@ export default async function AdminLogin({ searchParams }: { searchParams: Promi
         <input type="hidden" name="portal" value="admin" />
         <input type="hidden" name="next" value={sp.next ?? ""} />
         <div><label className="label" htmlFor="email">Email</label><input id="email" name="email" type="email" required autoComplete="username" defaultValue={sp.email} className="input" /></div>
-        <div><label className="label" htmlFor="password">Password</label><input id="password" name="password" type="password" required autoComplete="current-password" className="input" /></div>
+        <div><label className="label" htmlFor="password">Password</label><PasswordInput id="password" name="password" required autoComplete="current-password" className="input" /></div>
         {sp.error === "code" && <div><label className="label" htmlFor="code">Authenticator code</label><input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" autoFocus className="input" /></div>}
         <button className="btn-primary w-full">Sign in</button>
         <p className="text-center text-xs text-muted">Authorised personnel only. Activity is logged.</p>

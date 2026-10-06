@@ -9,13 +9,17 @@ import { PageHeader, Notice } from "@/components/admin/ui";
 export const metadata: Metadata = { title: "System settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-const GROUPS: [string, string][] = [["general", "General"], ["branding", "Branding"], ["currency", "Currency"], ["vat", "VAT"], ["installment", "Installment"], ["payments", "Payments"], ["inventory", "Inventory"], ["shipping", "Shipping"], ["notifications", "Notifications"], ["pwa", "PWA"], ["seo", "SEO"], ["social", "Social media"]];
+const GROUPS: [string, string][] = [["homepage", "Homepage text"], ["pagetext", "Page text"], ["general", "General"], ["branding", "Branding"], ["currency", "Currency"], ["vat", "VAT"], ["installment", "Installment"], ["payments", "Payments"], ["inventory", "Inventory"], ["shipping", "Shipping"], ["notifications", "Notifications"], ["pwa", "PWA"], ["seo", "SEO"], ["social", "Social media"]];
 const FINANCIAL = ["vat", "installment", "payments", "currency", "shipping"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ group?: string; notice?: string; error?: string }> }) {
-  const user = await requireStaffPage("settings:view");
+  const user = await requireStaffPage();
+  const fullAccess = user.permissions.has("settings:view");
+  if (!fullAccess && !user.permissions.has("content:edit")) await requireStaffPage("settings:view");
   const sp = await searchParams;
-  const group = GROUPS.some(([g]) => g === sp.group) ? sp.group! : "general";
+  // Content editors only see the wording and SEO groups; financial and system groups need settings access.
+  const visible = fullAccess ? GROUPS : GROUPS.filter(([g]) => ["homepage", "pagetext", "seo"].includes(g));
+  const group = visible.some(([g]) => g === sp.group) ? sp.group! : visible[0][0];
   const values = await getSettings();
   const defs = Object.entries(SETTING_DEFS).filter(([, d]) => d.group === group);
   return (
@@ -26,7 +30,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <nav aria-label="Settings groups" className="card h-fit p-2">
           <ul>
-            {GROUPS.map(([g, l]) => <li key={g}><Link href={`/admin/settings?group=${g}`} aria-current={g === group ? "page" : undefined} className={`block rounded-lg px-3 py-2 text-sm font-medium ${g === group ? "bg-brand text-white" : "hover:bg-brand-50"}`}>{l}</Link></li>)}
+            {visible.map(([g, l]) => <li key={g}><Link href={`/admin/settings?group=${g}`} aria-current={g === group ? "page" : undefined} className={`block rounded-lg px-3 py-2 text-sm font-medium ${g === group ? "bg-brand text-white" : "hover:bg-brand-50"}`}>{l}</Link></li>)}
             {user.permissions.has("settings:paystack") && <li><Link href="/admin/settings/paystack" className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-brand-50">Paystack</Link></li>}
             {user.permissions.has("settings:bank") && <li><Link href="/admin/settings/banks" className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-brand-50">Bank accounts</Link></li>}
             <li><Link href="/admin/divisions" className="block rounded-lg px-3 py-2 text-sm font-medium hover:bg-brand-50">Divisions</Link></li>
@@ -34,7 +38,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </nav>
         <form action={saveSettings} className="card space-y-4 p-5">
           <input type="hidden" name="group" value={group} />
-          <h2 className="font-display text-lg font-bold capitalize text-navy">{GROUPS.find(([g]) => g === group)?.[1]}</h2>
+          <h2 className="font-display text-lg font-bold capitalize text-navy">{visible.find(([g]) => g === group)?.[1]}</h2>
           {defs.length === 0 && <p className="text-sm text-muted">No settings in this group.</p>}
           {defs.map(([key, d]) => {
             const val = values[key];

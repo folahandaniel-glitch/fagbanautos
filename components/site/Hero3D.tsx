@@ -32,7 +32,7 @@ function detectTier(): Tier {
   }
 }
 
-export function Hero3D({ children }: { children: React.ReactNode }) {
+export function Hero3D({ children, fallbackImage }: { children: React.ReactNode; fallbackImage?: string }) {
   const [tier, setTier] = useState<Tier>("low");
   const [failed, setFailed] = useState(false);
   useEffect(() => { const t = window.setTimeout(() => setTier(detectTier()), 0); return () => window.clearTimeout(t); }, []);
@@ -50,7 +50,7 @@ export function Hero3D({ children }: { children: React.ReactNode }) {
               <CarScene animate={tier === "high"} />
             </ErrorBoundary>
           ) : (
-            <StaticCar />
+            <StaticCar src={fallbackImage} />
           )}
         </div>
       </div>
@@ -58,13 +58,13 @@ export function Hero3D({ children }: { children: React.ReactNode }) {
   );
 }
 
-function StaticCar() {
+function StaticCar({ src }: { src?: string }) {
   // Lightweight fallback: layered CSS depth, no JS animation, no WebGL.
   return (
     <div className="absolute inset-0 grid place-items-center">
       <div className="absolute bottom-6 h-6 w-4/5 rounded-full bg-black/40 blur-xl" />
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/api/placeholder?kind=vehicle&make=FAGDAN&model=AutoGallery&year=2026&colour=blue&i=1" alt="" width={1200} height={800} className="drift h-full w-full rounded-3xl object-cover opacity-95 shadow-2xl" />
+      <img src={src || "/api/placeholder?kind=vehicle&make=FAGDAN&model=AutoGallery&year=2026&colour=blue&i=1"} alt="" width={1200} height={800} className="drift h-full w-full rounded-3xl object-cover opacity-95 shadow-2xl" />
     </div>
   );
 }

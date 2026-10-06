@@ -4,6 +4,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSite, waLink } from "@/lib/site";
+import { getContent } from "@/lib/content";
+import { ProductGallery } from "@/components/site/ProductGallery";
 import { buildQuote } from "@/lib/services/orders";
 import { formatNaira } from "@/lib/money";
 import { SmartImage } from "@/components/ui/media";
@@ -25,6 +27,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!p || p.status === "DRAFT" || p.status === "ARCHIVED") notFound();
   if (p.type === "VEHICLE") redirect(`/cars/${p.slug}`);
   const site = await getSite();
+  const content = await getContent();
+  const canBuy = !p.isDemo || content.flag("catalogue.allowDemoPurchases");
   const available = p.stockOnHand - p.stockReserved;
   const inStock = p.status === "ACTIVE" && (available > 0 || p.allowBackorder);
   const quote = inStock ? await buildQuote({ lines: [{ productId: p.id, quantity: 1 }], mode: "OUTRIGHT" }) : null;
@@ -41,7 +45,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/" className="hover:text-brand">Home</Link> / <span>{p.category?.name}</span> / <span className="text-ink">{p.name}</span></nav>
       <div className="mt-4 grid gap-8 lg:grid-cols-2">
-        <div className="card overflow-hidden"><div className="relative aspect-[4/3] bg-brand-50">{p.images[0] && <SmartImage src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" priority sizes="(max-width:1024px) 100vw, 50vw" />}</div></div>
+        <ProductGallery images={p.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, credit: i.credit, sourceUrl: i.sourceUrl }))} name={p.name} aspect="aspect-[4/3]" />
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-accent-600">{p.brand?.name}</p>
           <h1 className="mt-1 font-display text-2xl font-extrabold text-navy sm:text-3xl">{p.name}</h1>
@@ -56,7 +60,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
               <ul className="mt-1 list-inside list-disc text-muted">{p.compat.map((c) => <li key={c.id}>{c.makeName} {c.modelName ?? "(all models)"} {c.yearFrom ? `${c.yearFrom}${c.yearTo && c.yearTo !== c.yearFrom ? `-${c.yearTo}` : ""}` : ""}</li>)}</ul>
               <p className="mt-2 text-xs text-muted">Check your vehicle&apos;s exact year, engine and trim before ordering. When unsure, <a className="font-semibold text-brand underline" href={waLink(site.phone1, `Does ${p.name} (${p.sku}) fit my car?`)}>ask us</a>.</p></div>
           )}
-          {inStock && (
+          {inStock && !canBuy && (
+            <div className="mt-5 flex flex-wrap gap-3"><a href={waLink(site.phone1, `Hello FAGDAN, I would like to enquire about ${p.name} (${p.sku}).`)} target="_blank" rel="noopener noreferrer" className="btn-primary">Enquire on WhatsApp</a><Link href="/contact" className="btn-ghost">Request details</Link></div>
+          )}
+          {inStock && canBuy && (
             <div className="mt-5 flex flex-wrap items-end gap-3">
               <form action={addToCart} className="flex items-end gap-3">
                 <input type="hidden" name="productId" value={p.id} />

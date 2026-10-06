@@ -21,6 +21,7 @@ const NAV: (NavItem & { perm?: string[] })[] = [
   { href: "/admin/workflows/finance", label: "Finance applications", perm: ["finance_applications:view"] },
   { href: "/admin/workflows/tasks", label: "Tasks", perm: ["tasks:view"] },
   { href: "/admin/reports", label: "Reports and exports", perm: ["reports:view"] },
+  { href: "/admin/settings?group=homepage", label: "Homepage and page text", perm: ["content:edit", "settings:view"] },
   { href: "/admin/cms", label: "Content (CMS)", perm: ["content:view", "banners:view", "blog:view"] },
   { href: "/admin/divisions", label: "Divisions", perm: ["divisions:view", "settings:manage"] },
   { href: "/admin/settings", label: "System settings", perm: ["settings:view", "settings:manage", "settings:vat"] },

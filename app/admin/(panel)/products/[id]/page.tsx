@@ -5,10 +5,12 @@ import type { ProductType } from "@prisma/client";
 import { requireStaffPage } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
 import { saveProduct } from "@/app/actions/admin-products";
-import { PageHeader, Notice, Pill } from "@/components/admin/ui";
+import { PageHeader, Notice } from "@/components/admin/ui";
+import { ImageManager } from "@/components/admin/ImageManager";
 
 export const metadata: Metadata = { title: "Edit product", robots: { index: false } };
 export const dynamic = "force-dynamic";
+export const maxDuration = 60; // the automatic photo finder downloads and compresses images
 const TYPES: ProductType[] = ["VEHICLE", "PART", "ACCESSORY", "TECHNOLOGY", "SERVICE", "OTHER"];
 const CONDITIONS = ["BRAND_NEW", "FOREIGN_USED", "NIGERIAN_USED", "CERTIFIED_USED", "NEARLY_NEW", "EXECUTIVE_USED"];
 
@@ -35,13 +37,13 @@ export default async function ProductEditor({ params, searchParams }: { params: 
       {sp.notice && <Notice kind="ok">{sp.notice}</Notice>}
       {sp.error && <Notice kind="error">{sp.error}</Notice>}
       {p?.isDemo && <Notice>This is demo/seed data. Replace the details and images with real stock before going live.</Notice>}
-      <form action={saveProduct} encType="multipart/form-data" className="grid gap-6 lg:grid-cols-[1fr_340px]">
+      <form action={saveProduct} className="grid gap-6 lg:grid-cols-[1fr_340px]">
         <input type="hidden" name="id" value={p?.id ?? ""} /><input type="hidden" name="type" value={type} />
         <div className="space-y-6">
           <section className="card grid gap-4 p-5 sm:grid-cols-2">
             <h2 className="font-display text-lg font-bold text-navy sm:col-span-2">Basics</h2>
             <div className="sm:col-span-2">{field("name", "Name", p?.name, { required: true })}</div>
-            {field("sku", "SKU", p?.sku, { required: true })}
+            {field("sku", "SKU (leave blank: generated automatically)", p?.sku, { placeholder: "Auto-generated" })}
             <div><label className="label" htmlFor="divisionId">Division</label><select id="divisionId" name="divisionId" defaultValue={p?.divisionId} className="input" disabled={!canSave}>{divisions.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
             <div><label className="label" htmlFor="categoryId">Category</label><select id="categoryId" name="categoryId" defaultValue={p?.categoryId ?? ""} className="input" disabled={!canSave}><option value="">None</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
             <div><label className="label" htmlFor="brandId">Brand</label><select id="brandId" name="brandId" defaultValue={p?.brandId ?? ""} className="input" disabled={!canSave}><option value="">None</option>{brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
@@ -53,7 +55,7 @@ export default async function ProductEditor({ params, searchParams }: { params: 
           {isVehicle && (
             <section className="card grid gap-4 p-5 sm:grid-cols-2">
               <h2 className="font-display text-lg font-bold text-navy sm:col-span-2">Vehicle details</h2>
-              {field("inventoryId", "Inventory ID (unique)", v?.inventoryId, { required: true })}{field("stockNumber", "Stock number (unique)", v?.stockNumber, { required: true })}
+              {field("inventoryId", "Inventory ID (blank: automatic)", v?.inventoryId, { placeholder: "Auto-generated" })}{field("stockNumber", "Stock number (blank: automatic)", v?.stockNumber, { placeholder: "Auto-generated" })}
               {field("vin", "VIN (unique, if available)", v?.vin, { maxLength: 17 })}{field("year", "Year", v?.year, { required: true, inputMode: "numeric" })}
               {field("makeName", "Make", v?.makeName, { required: true })}{field("modelName", "Model", v?.modelName, { required: true })}
               {field("trim", "Trim", v?.trim)}{field("bodyType", "Body type", v?.bodyType, { required: true })}
@@ -75,11 +77,7 @@ export default async function ProductEditor({ params, searchParams }: { params: 
           )}
 
           <section className="card grid gap-4 p-5 sm:grid-cols-2">
-            <h2 className="font-display text-lg font-bold text-navy sm:col-span-2">Images, SEO and details</h2>
-            <div className="sm:col-span-2"><p className="label">Current images</p><ul className="flex flex-wrap gap-2">{p?.images.map((i) => <li key={i.id} className="text-xs">{i.isPlaceholder ? <Pill tone="gold">placeholder</Pill> : <Pill>photo</Pill>}</li>)}</ul></div>
-            <div><label className="label" htmlFor="imageFile">Upload a photo (JPG, PNG, WebP; max 4 MB)</label><input id="imageFile" name="imageFile" type="file" accept="image/jpeg,image/png,image/webp" className="input !py-2" disabled={!canSave} /></div>
-            <div><label className="label" htmlFor="imageUrls">Or image URLs (https, one per line)</label><textarea id="imageUrls" name="imageUrls" className="input min-h-16" disabled={!canSave} /></div>
-            <p className="text-xs text-muted sm:col-span-2">Adding a real photo replaces the generated placeholder images for this listing.</p>
+            <h2 className="font-display text-lg font-bold text-navy sm:col-span-2">SEO and details</h2>
             {field("videoUrl", "Video URL", p?.videoUrl)}{field("warranty", "Warranty", p?.warranty)}
             {field("origin", "Origin country", p?.origin)}
             <div><label className="label" htmlFor="condition">Condition</label><select id="condition" name="condition" defaultValue={p?.condition ?? ""} className="input" disabled={!canSave}><option value="">n/a</option>{CONDITIONS.map((c) => <option key={c} value={c}>{c.replace(/_/g, " ")}</option>)}</select></div>
@@ -107,6 +105,9 @@ export default async function ProductEditor({ params, searchParams }: { params: 
           {canSave ? <button className="btn-primary w-full">{isNew ? "Create" : "Save changes"}</button> : <p className="text-sm text-muted">Read-only for your role.</p>}
         </aside>
       </form>
+      <div className="mt-6 max-w-5xl">
+        {p ? <ImageManager productId={p.id} productName={p.name} canEdit={canSave} images={p.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, credit: i.credit, sourceUrl: i.sourceUrl, isPlaceholder: i.isPlaceholder, width: i.width, height: i.height, bytes: i.bytes }))} /> : <p className="card p-5 text-sm text-muted"><strong className="text-navy">Photos:</strong> after you create this listing you can upload several photos (compressed automatically), or the system will find suitable licensed photos for you.</p>}
+      </div>
     </>
   );
 }

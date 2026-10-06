@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import Link from "next/link";
 import { registerCustomer } from "@/app/actions/auth";
 
@@ -16,7 +17,7 @@ export default async function RegisterPage({ searchParams }: { searchParams: Pro
         <div><label className="label" htmlFor="name">Full name</label><input id="name" name="name" required autoComplete="name" className="input" /></div>
         <div><label className="label" htmlFor="email">Email</label><input id="email" name="email" type="email" required autoComplete="email" className="input" /></div>
         <div><label className="label" htmlFor="phone">Phone</label><input id="phone" name="phone" type="tel" required autoComplete="tel" className="input" placeholder="0806 000 0000" /></div>
-        <div><label className="label" htmlFor="password">Password</label><input id="password" name="password" type="password" required minLength={10} autoComplete="new-password" className="input" aria-describedby="pw-help" /><p id="pw-help" className="mt-1 text-xs text-muted">At least 10 characters with upper case, lower case and a number.</p></div>
+        <div><label className="label" htmlFor="password">Password</label><PasswordInput id="password" name="password" required minLength={10} autoComplete="new-password" className="input" aria-describedby="pw-help" /><p id="pw-help" className="mt-1 text-xs text-muted">At least 10 characters with upper case, lower case and a number.</p></div>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="consent" required className="mt-1 h-4 w-4" /> <span>I accept the <Link href="/legal/terms" className="text-brand underline">Terms</Link> and <Link href="/legal/privacy" className="text-brand underline">Privacy Policy</Link>.</span></label>
         <label className="flex items-start gap-2 text-sm"><input type="checkbox" name="marketing" className="mt-1 h-4 w-4" /> <span>Send me offers and updates (optional).</span></label>
         <button className="btn-primary w-full">Create account</button>

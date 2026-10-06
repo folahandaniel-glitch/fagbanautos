@@ -201,7 +201,7 @@ async function seedVehicles(cat: Map<string, string>, brands: Map<string, string
         condition, origin, warranty: condition === "BRAND_NEW" ? "3 years manufacturer warranty" : condition === "CERTIFIED_USED" ? "12 months FAGDAN certified" : "Inspection report provided",
         features: features.slice(0, 4 + Math.floor(r() * 3)),
         specs: { engine: v.engine, horsepower: v.hp, transmission: v.trans, drive: v.drive, fuel: v.fuel, bodyType: v.body, colour, mileageKm: mileage },
-        status: "ACTIVE", featured: r() < 0.14, stockOnHand: 1, stockReserved: 0, lowStockThreshold: 0, isDemo: true,
+        status: "ACTIVE", featured: r() < 0.14, stockOnHand: 1, stockReserved: 0, lowStockThreshold: 0, isDemo: true, needsImage: true,
         seoTitle: `${name} for sale in Nigeria | FAGDAN AutoGallery`, seoDescription: `${name}, ${condition.replace("_", " ").toLowerCase()}, ${mileage.toLocaleString("en-NG")} km. Buy outright or on FAGDAN installment.`,
         vehicle: { create: { inventoryId, stockNumber, vin, makeName: v.make, modelName: v.model, year, bodyType: v.body, fuelType: v.fuel, transmission: v.trans, driveType: v.drive, engine: v.engine, horsepower: v.hp, mileageKm: mileage, colour, installmentAvailable, minDepositBps: installmentAvailable ? 3000 : null, isDemo: true } },
         images: { create: [1, 2, 3].map((i) => ({ url: `/api/placeholder?kind=vehicle&make=${encodeURIComponent(v.make)}&model=${encodeURIComponent(v.model)}&year=${year}&colour=${encodeURIComponent(colour)}&i=${i}`, alt: `${name} (placeholder image ${i})`, sortOrder: i, isPlaceholder: true })) },
@@ -228,7 +228,7 @@ async function seedProducts(cat: Map<string, string>, brands: Map<string, string
         shortDescription: `${t.brand} ${t.category.toLowerCase()}`, description: `${t.name} by ${t.brand}. ${t.compat && t.compat.length ? "Vehicle-specific fit; confirm compatibility with your vehicle before ordering." : "Universal fit."} DEMO listing: sample data.`,
         price: BigInt(N(t.priceNaira)), discount: BigInt(r() < 0.15 ? N(Math.round(t.priceNaira * 0.05 / 100) * 100) : 0),
         partGrade: t.grade, partNumber: t.type === "PART" ? `${t.brand.slice(0, 3).toUpperCase()}-${10000 + n * 7}` : undefined, warranty: t.warranty, origin: pick(r, ["Japan", "Germany", "China", "USA", "Turkey", "India"]),
-        features: t.features ?? [], status: "ACTIVE", featured: r() < 0.1, stockOnHand: stock, lowStockThreshold: 5, isDemo: true,
+        features: t.features ?? [], status: "ACTIVE", featured: r() < 0.1, stockOnHand: stock, lowStockThreshold: 5, isDemo: true, needsImage: true,
         images: { create: [{ url: `/api/placeholder?kind=product&label=${encodeURIComponent(t.category)}&brand=${encodeURIComponent(t.brand)}`, alt: `${t.name} (placeholder image)`, isPlaceholder: true }] },
         compat: t.compat && t.compat.length ? { create: t.compat.map((c) => ({ makeName: c.make, modelName: c.model, yearFrom: c.from, yearTo: c.to })) } : undefined,
       },
@@ -331,8 +331,11 @@ async function main() {
     await seedVehicles(cats, brands);
     await seedProducts(cats, brands);
     await seedServices();
-    await seedPeopleAndOps();
-    await seedOrders();
+    // SEED_CATALOGUE_ONLY adds sample listings to a live site without fake customers, bookings or orders.
+    if (process.env.SEED_CATALOGUE_ONLY !== "true") {
+      await seedPeopleAndOps();
+      await seedOrders();
+    }
   } else console.log("demo seed skipped (production)");
 
   if (credentials.length) {

@@ -10,7 +10,7 @@ const COND: Record<string, string> = {
 };
 export const conditionLabel = (c?: string | null) => (c ? COND[c] ?? c : "");
 
-export function VehicleCard({ p }: { p: VehicleProduct }) {
+export function VehicleCard({ p, showDemo = false }: { p: VehicleProduct; showDemo?: boolean }) {
   const v = p.vehicle;
   const available = p.stockOnHand - p.stockReserved > 0;
   return (
@@ -21,7 +21,7 @@ export function VehicleCard({ p }: { p: VehicleProduct }) {
           {p.condition && <span className="chip bg-white/95">{conditionLabel(p.condition)}</span>}
           {v?.installmentAvailable && <span className="badge-gold bg-white/95">Installment</span>}
         </div>
-        {p.isDemo && <div className="absolute bottom-3 left-3"><DemoTag /></div>}
+        {showDemo && p.isDemo && <div className="absolute bottom-3 left-3"><DemoTag /></div>}
         {!available && <div className="absolute inset-0 grid place-items-center bg-navy/60 text-sm font-bold uppercase tracking-wider text-white">Reserved</div>}
       </div>
       <div className="p-4">
@@ -35,7 +35,7 @@ export function VehicleCard({ p }: { p: VehicleProduct }) {
   );
 }
 
-export function ProductCard({ p, href }: { p: AnyProduct; href: string }) {
+export function ProductCard({ p, href, showDemo = false }: { p: AnyProduct; href: string; showDemo?: boolean }) {
   const available = p.stockOnHand - p.stockReserved > 0 || p.allowBackorder;
   return (
     <Link href={href} className="card tilt group block overflow-hidden">
@@ -44,7 +44,7 @@ export function ProductCard({ p, href }: { p: AnyProduct; href: string }) {
         <div className="absolute left-3 top-3 flex gap-1.5">
           {p.partGrade && <span className="chip bg-white/95">{p.partGrade === "OEM" ? "OEM" : "Aftermarket"}</span>}
         </div>
-        {p.isDemo && <div className="absolute bottom-3 left-3"><DemoTag /></div>}
+        {showDemo && p.isDemo && <div className="absolute bottom-3 left-3"><DemoTag /></div>}
       </div>
       <div className="p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-accent-600">{p.shortDescription?.split(" ")[0] ?? ""}</p>

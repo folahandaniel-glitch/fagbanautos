@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import Link from "next/link";
 import { requireStaffPage } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
@@ -22,7 +23,7 @@ export default async function PaystackSettings({ searchParams }: { searchParams:
       <div className="mb-4 flex flex-wrap gap-2"><Pill tone={cfg.enabled ? "ok" : "warn"}>{cfg.enabled ? "Enabled" : "Disabled"}</Pill><Pill>{(row?.mode ?? "test").toUpperCase()} mode</Pill><Pill tone={cfg.secretKey ? "ok" : "danger"}>{cfg.secretKey ? `Secret key set (${cfg.source})` : "No secret key"}</Pill></div>
       <form action={savePaystack} className="card max-w-2xl space-y-4 p-5">
         <div><label className="label" htmlFor="publicKey">Public key</label><input id="publicKey" name="publicKey" defaultValue={row?.publicKey ?? ""} className="input font-mono" placeholder="pk_test_…" autoComplete="off" /></div>
-        <div><label className="label" htmlFor="secretKey">Secret key {cfg.secretKey && <span className="font-normal text-muted">(saved. Enter a new one to replace it)</span>}</label><input id="secretKey" name="secretKey" type="password" className="input font-mono" placeholder={cfg.secretKey ? "••••••••••••••••" : "sk_test_…"} autoComplete="new-password" /><p className="mt-1 text-xs text-muted">{process.env.PAYSTACK_SECRET_KEY ? "An environment variable is set and takes precedence over this field." : "Stored encrypted (AES-256-GCM). Never sent to the browser."}</p></div>
+        <div><label className="label" htmlFor="secretKey">Secret key {cfg.secretKey && <span className="font-normal text-muted">(saved. Enter a new one to replace it)</span>}</label><PasswordInput id="secretKey" name="secretKey" className="input font-mono" placeholder={cfg.secretKey ? "••••••••••••••••" : "sk_test_…"} autoComplete="new-password" /><p className="mt-1 text-xs text-muted">{process.env.PAYSTACK_SECRET_KEY ? "An environment variable is set and takes precedence over this field." : "Stored encrypted (AES-256-GCM). Never sent to the browser."}</p></div>
         <fieldset className="flex gap-4"><legend className="label">Mode</legend>
           <label className="flex items-center gap-2 text-sm"><input type="radio" name="mode" value="test" defaultChecked={(row?.mode ?? "test") === "test"} /> Test</label>
           <label className="flex items-center gap-2 text-sm"><input type="radio" name="mode" value="live" defaultChecked={row?.mode === "live"} /> Live</label></fieldset>

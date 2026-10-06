@@ -5,13 +5,15 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ensureCartKey, getCartKey } from "@/lib/cart";
+import { getSetting } from "@/lib/settings";
 
 const addSchema = z.object({ productId: z.string().min(1), quantity: z.coerce.number().int().min(1).max(99).default(1) });
 
 export async function addToCart(formData: FormData) {
   const { productId, quantity } = addSchema.parse({ productId: formData.get("productId"), quantity: formData.get("quantity") ?? 1 });
-  const product = await db.product.findUnique({ where: { id: productId }, select: { id: true, type: true, status: true, stockOnHand: true, stockReserved: true, allowBackorder: true } });
+  const product = await db.product.findUnique({ where: { id: productId }, select: { id: true, type: true, status: true, isDemo: true, stockOnHand: true, stockReserved: true, allowBackorder: true } });
   if (!product || product.status !== "ACTIVE" || product.type === "SERVICE") redirect("/cart?error=unavailable");
+  if (product.isDemo && (await getSetting("catalogue.allowDemoPurchases")) !== true) redirect("/cart?error=demo");
   const key = await ensureCartKey();
   const cart = await db.cart.upsert({ where: { sessionKey: key }, create: { sessionKey: key }, update: {} });
   const qty = product.type === "VEHICLE" ? 1 : quantity; // vehicles can never exceed quantity 1

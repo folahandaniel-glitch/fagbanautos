@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { changeEmail, changePassword } from "@/app/actions/auth";
 import { requireStaffPage } from "@/lib/auth/guard";
 import { db } from "@/lib/db";
@@ -26,16 +27,16 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
           <h2 id="pw-h" className="font-display text-lg font-bold text-navy">Change password</h2>
           <p className="text-sm text-muted">Use at least 10 characters with upper case, lower case and a number. Changing it signs you out on all other devices.</p>
           <input type="hidden" name="returnTo" value="profile" />
-          <div><label className="label" htmlFor="cp-current">Current password</label><input id="cp-current" name="current" type="password" required autoComplete="current-password" className="input" /></div>
-          <div><label className="label" htmlFor="cp-next">New password</label><input id="cp-next" name="next" type="password" required minLength={10} autoComplete="new-password" className="input" /></div>
-          <div><label className="label" htmlFor="cp-confirm">Confirm new password</label><input id="cp-confirm" name="confirm" type="password" required minLength={10} autoComplete="new-password" className="input" /></div>
+          <div><label className="label" htmlFor="cp-current">Current password</label><PasswordInput id="cp-current" name="current" required autoComplete="current-password" className="input" /></div>
+          <div><label className="label" htmlFor="cp-next">New password</label><PasswordInput id="cp-next" name="next" required minLength={10} autoComplete="new-password" className="input" /></div>
+          <div><label className="label" htmlFor="cp-confirm">Confirm new password</label><PasswordInput id="cp-confirm" name="confirm" required minLength={10} autoComplete="new-password" className="input" /></div>
           <button className="btn-primary">Change password</button>
         </form>
         <form action={changeEmail} className="card space-y-4 p-5" aria-labelledby="em-h">
           <h2 id="em-h" className="font-display text-lg font-bold text-navy">Sign-in email</h2>
           <p className="text-sm text-muted">Currently <strong className="text-ink">{row.email}</strong>. Enter your password to change it.</p>
           <div><label className="label" htmlFor="ce-email">New email</label><input id="ce-email" name="email" type="email" required autoComplete="email" className="input" /></div>
-          <div><label className="label" htmlFor="ce-pw">Password</label><input id="ce-pw" name="password" type="password" required autoComplete="current-password" className="input" /></div>
+          <div><label className="label" htmlFor="ce-pw">Password</label><PasswordInput id="ce-pw" name="password" required autoComplete="current-password" className="input" /></div>
           <button className="btn-primary">Change email</button>
         </form>
       </div>
@@ -52,7 +53,7 @@ export default async function Profile({ searchParams }: { searchParams: Promise<
             <form action={confirm2fa} className="flex items-end gap-2"><div><label className="label" htmlFor="code">Code</label><input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" required className="input" /></div><button className="btn-primary">Confirm</button></form>
           </div>
         )}
-        {row.totpEnabled && <form action={disable2fa} className="flex items-end gap-2"><div><label className="label" htmlFor="pw">Password</label><input id="pw" name="password" type="password" required autoComplete="current-password" className="input" /></div><button className="btn-ghost">Turn off</button></form>}
+        {row.totpEnabled && <form action={disable2fa} className="flex items-end gap-2"><div><label className="label" htmlFor="pw">Password</label><PasswordInput id="pw" name="password" required autoComplete="current-password" className="input" /></div><button className="btn-ghost">Turn off</button></form>}
       </section>
     </>
   );

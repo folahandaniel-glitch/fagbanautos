@@ -5,6 +5,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSite, waLink } from "@/lib/site";
+import { getContent } from "@/lib/content";
+import { ProductGallery } from "@/components/site/ProductGallery";
 import { buildQuote } from "@/lib/services/orders";
 import { accessoriesForVehicle } from "@/lib/catalogue";
 import { formatNaira } from "@/lib/money";
@@ -33,6 +35,9 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
   const v = p.vehicle;
   await sweepExpiredReservations();
   const site = await getSite();
+  const content = await getContent();
+  const showDemo = content.flag("site.showDemoLabels");
+  const canBuy = !p.isDemo || content.flag("catalogue.allowDemoPurchases");
   const available = p.status === "ACTIVE" && p.stockOnHand - p.stockReserved > 0;
   const lines = [{ productId: p.id, quantity: 1 }];
   const outright = available ? await buildQuote({ lines, mode: "OUTRIGHT" }) : null;
@@ -59,15 +64,8 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[1.4fr_1fr]">
         <div>
-          <div className="card overflow-hidden">
-            <div className="relative aspect-[3/2] bg-brand-50">{p.images[0] && <SmartImage src={p.images[0].url} alt={p.images[0].alt ?? p.name} className="h-full w-full object-cover" priority sizes="(max-width:1024px) 100vw, 60vw" />}</div>
-          </div>
-          {p.images.length > 1 && (
-            <ul className="mt-3 grid grid-cols-3 gap-3">
-              {p.images.slice(1).map((img) => <li key={img.id} className="card relative aspect-[3/2] overflow-hidden"><SmartImage src={img.url} alt={img.alt ?? p.name} className="h-full w-full object-cover" sizes="20vw" /></li>)}
-            </ul>
-          )}
-          {p.isDemo && <p className="mt-3 rounded-xl bg-accent/15 p-3 text-sm text-ink"><strong>Demo listing.</strong> Images are generated illustrations and this vehicle is sample data, not physical inventory.</p>}
+          <ProductGallery images={p.images.map((i) => ({ id: i.id, url: i.url, alt: i.alt, credit: i.credit, sourceUrl: i.sourceUrl }))} name={p.name} />
+          {showDemo && p.isDemo && <p className="mt-3 rounded-xl bg-accent/15 p-3 text-sm text-ink"><strong>Demo listing.</strong> Images are generated illustrations and this vehicle is sample data, not physical inventory.</p>}
           <section className="mt-8"><h2 className="section-title">Overview</h2><p className="mt-3 text-sm leading-relaxed text-muted">{p.description}</p>
             {p.features.length > 0 && <ul className="mt-4 grid gap-2 sm:grid-cols-2">{p.features.map((f) => <li key={f} className="flex items-center gap-2 text-sm"><span className="grid h-5 w-5 place-items-center rounded-full bg-brand-50 text-xs text-brand" aria-hidden="true">✓</span>{f}</li>)}</ul>}
           </section>
@@ -94,7 +92,13 @@ export default async function VehiclePage({ params }: { params: Promise<{ slug: 
               </dl>
             )}
 
-            {available ? (
+            {available && !canBuy ? (
+              <div className="mt-5 grid gap-2">
+                <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-primary w-full">Enquire on WhatsApp</a>
+                <Link href="/contact" className="btn-ghost w-full">Request details</Link>
+                <p className="text-xs text-muted">Contact us to confirm availability, inspection and the final price.</p>
+              </div>
+            ) : available ? (
               <div className="mt-5 grid gap-2">
                 <form action={addToCart}><input type="hidden" name="productId" value={p.id} /><input type="hidden" name="buyNow" value="1" /><button className="btn-primary w-full">Buy now (outright)</button></form>
                 <form action={addToCart}><input type="hidden" name="productId" value={p.id} /><button className="btn-ghost w-full">Add to cart</button></form>

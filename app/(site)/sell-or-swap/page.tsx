@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
+import { getContent } from "@/lib/content";
 import { submitTradeOrSwap } from "@/app/actions/services";
 
 export const metadata: Metadata = { title: "Sell, trade in or swap your car", description: "Get a valuation, trade in your car or swap for another vehicle with FAGDAN.", alternates: { canonical: "/sell-or-swap" } };
 
 export default async function SellOrSwap({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const sp = await searchParams;
+  const c = await getContent();
   return (
     <div className="container-x max-w-3xl py-8">
-      <h1 className="font-display text-3xl font-extrabold text-navy">Sell, trade in or swap your car</h1>
-      <p className="mt-1 text-sm text-muted">Tell us about your car. An appraiser will value it and make you an offer. Use it as a trade-in credit toward your next purchase, or swap it for another vehicle with the cash difference worked out transparently.</p>
+      <h1 className="font-display text-3xl font-extrabold text-navy">{c.t("pages.sell.title")}</h1>
+      <p className="mt-1 text-sm text-muted">{c.t("pages.sell.intro")}</p>
       <form action={submitTradeOrSwap} encType="multipart/form-data" className="card mt-6 space-y-4 p-6">
         {sp.error && <p role="alert" className="rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.error === "invalid" ? "Please check your details." : sp.error}</p>}
         <fieldset className="grid gap-3 sm:grid-cols-2"><legend className="label">What would you like to do?</legend>

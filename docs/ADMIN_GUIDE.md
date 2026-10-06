@@ -32,3 +32,11 @@ VAT settings, installment rules, bank accounts, Paystack credentials, refund set
 ## Things to do before launch
 
 Replace placeholder bank accounts, add Paystack keys, enter real contact details, replace demo stock, have the legal pages reviewed. See `docs/DEPLOYMENT.md`.
+
+## Photos, SKUs and website wording
+
+- **SKU, inventory ID and stock number** are generated automatically (`VEH-000001`, `PRT-`, `ACC-`, `TEC-`, `SVC-`, `FAG-INV-000001`, `STK-2026-0001`). Type your own in the field to override.
+- **Photos:** open a product, scroll to *Photos*. Upload several at once (they are shrunk in the browser and saved as compressed WebP, max 1600 px), add from a link, reorder, set the main photo, edit alt text and credit, or delete. New listings get licensed photos from Wikimedia Commons automatically (credits are stored and shown on the product page); where no suitable photo exists a category illustration is used and the item is flagged *needs image*. Always check automatic photos suit the product.
+- **Website wording:** *Homepage and page text* (Settings) edits the hero, section titles, finance panel, trust cards and every main page heading and intro. Content editors can change wording without access to financial settings.
+- **Sample listings:** items marked demo hide their "demo" labels (`site.showDemoLabels`) and cannot be bought online (`catalogue.allowDemoPurchases` off); customers see an *Enquire on WhatsApp* button instead. Replace or archive them as real stock arrives.
+- **Passwords:** every password field has a Show/Hide button.

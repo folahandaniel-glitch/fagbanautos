@@ -312,6 +312,11 @@ model ProductImage {
   alt       String?
   sortOrder Int     @default(0)
   isPlaceholder Boolean @default(false)
+  credit    String?  // photographer / licence text shown on the page when the photo requires attribution
+  sourceUrl String?  // where the photo came from (e.g. Wikimedia Commons file page)
+  width     Int?
+  height    Int?
+  bytes     Int?
 
   @@index([productId])
 }

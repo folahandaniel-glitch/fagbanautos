@@ -1,4 +1,5 @@
 import { jsonLd } from "@/lib/json-ld";
+import { getContent } from "@/lib/content";
 import type { Metadata } from "next";
 import { getSite, displayPhone, waLink } from "@/lib/site";
 import { submitContact } from "@/app/actions/enquiry";
@@ -6,12 +7,13 @@ import { submitContact } from "@/app/actions/enquiry";
 export const metadata: Metadata = { title: "Contact us", alternates: { canonical: "/contact" } };
 
 export default async function ContactPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [site, sp] = await Promise.all([getSite(), searchParams]);
+  const [site, sp, c] = await Promise.all([getSite(), searchParams, getContent()]);
   const ld = { "@context": "https://schema.org", "@type": "AutoDealer", name: site.flagship, telephone: site.phone1, email: site.email, address: { "@type": "PostalAddress", streetAddress: site.address, addressCountry: "NG" }, openingHours: site.hours };
   return (
     <div className="container-x py-8">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(ld) }} />
       <h1 className="font-display text-3xl font-extrabold text-navy">Contact FAGDAN</h1>
+      <p className="mt-1 max-w-2xl text-sm text-muted">{c.t("pages.contact.intro")}</p>
       <div className="mt-6 grid gap-6 md:grid-cols-2">
         <div className="card space-y-3 p-6 text-sm">
           <p><strong className="text-navy">Phone / WhatsApp</strong><br /><a className="text-brand" href={`tel:${site.phone1}`}>{displayPhone(site.phone1)}</a> · <a className="text-brand" href={`tel:${site.phone2}`}>{displayPhone(site.phone2)}</a></p>

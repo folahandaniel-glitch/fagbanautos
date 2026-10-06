@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
-import { requirePermission, AuthError } from "@/lib/auth/guard";
+import { requirePermission, requireAnyPermission, AuthError } from "@/lib/auth/guard";
 import { getSettings, setSetting } from "@/lib/settings";
 import { SETTING_DEFS, settingPermission } from "@/lib/settings-defaults";
 import { encryptSecret, maskSecret } from "@/lib/crypto";
@@ -21,11 +21,16 @@ async function need(perm: string, path: string) {
   catch (e) { if (e instanceof AuthError) redirect(e.status === 401 ? "/admin/login" : `${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent("You do not have permission to do that.")}`); throw e; }
 }
 
+async function needAny(perms: string[], path: string) {
+  try { return await requireAnyPermission(...perms); }
+  catch (e) { if (e instanceof AuthError) redirect(e.status === 401 ? "/admin/login" : `${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent("You do not have permission to do that.")}`); throw e; }
+}
+
 export async function saveSettings(formData: FormData) {
   const group = String(formData.get("group"));
   const path = `/admin/settings?group=${group}`;
   const reason = String(formData.get("reason") ?? "").trim();
-  const user = await need("settings:view", path);
+  const user = await needAny(["settings:view", "content:edit"], path);
   const current = await getSettings();
   const keys = Object.entries(SETTING_DEFS).filter(([, d]) => d.group === group).map(([k]) => k);
   let changed = 0;

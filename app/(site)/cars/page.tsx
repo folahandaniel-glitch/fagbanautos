@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getContent } from "@/lib/content";
 import { sweepExpiredReservations } from "@/lib/services/orders";
 import Link from "next/link";
 import { listVehicles, parseVehicleFilters, vehicleFacets } from "@/lib/catalogue";
@@ -12,6 +13,7 @@ const CONDITIONS = ["BRAND_NEW", "FOREIGN_USED", "NIGERIAN_USED", "CERTIFIED_USE
 
 export default async function CarsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const sp = await searchParams;
+  const c = await getContent();
   const f = parseVehicleFilters(sp);
   await sweepExpiredReservations();
   const [{ items, total, page, pages }, facets] = await Promise.all([listVehicles(f), vehicleFacets()]);
@@ -20,8 +22,9 @@ export default async function CarsPage({ searchParams }: { searchParams: Promise
   return (
     <div className="container-x py-8">
       <nav aria-label="Breadcrumb" className="text-sm text-muted"><Link href="/" className="hover:text-brand">Home</Link> / <span className="text-ink">Cars</span></nav>
-      <h1 className="mt-2 font-display text-3xl font-extrabold text-navy">Cars for sale</h1>
-      <p className="mt-1 text-sm text-muted">{total} vehicle{total === 1 ? "" : "s"} found</p>
+      <h1 className="mt-2 font-display text-3xl font-extrabold text-navy">{c.t("pages.cars.title")}</h1>
+      <p className="mt-1 max-w-2xl text-sm text-muted">{c.t("pages.cars.intro")}</p>
+      <p className="mt-1 text-xs font-semibold text-brand">{total} vehicle{total === 1 ? "" : "s"} found</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[280px_1fr]">
         <form method="get" className="card h-fit space-y-4 p-4" aria-label="Filter vehicles">
@@ -53,7 +56,7 @@ export default async function CarsPage({ searchParams }: { searchParams: Promise
           {items.length === 0 ? (
             <div className="card p-10 text-center"><p className="font-display text-lg font-bold text-navy">No vehicles match your search.</p><p className="mt-2 text-sm text-muted">Try fewer filters, or let FAGDAN source it for you.</p><Link href="/imports" className="btn-primary mt-4">Request an import</Link></div>
           ) : (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{items.map((p) => <VehicleCard key={p.id} p={p} />)}</div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">{items.map((p) => <VehicleCard key={p.id} p={p} showDemo={c.flag("site.showDemoLabels")} />)}</div>
           )}
           <Pager page={page} pages={pages} basePath="/cars" params={params} />
         </section>

@@ -24,7 +24,7 @@ export default async function CartPage({ searchParams }: { searchParams: Promise
   return (
     <div className="container-x py-8">
       <h1 className="font-display text-3xl font-extrabold text-navy">Your cart</h1>
-      {sp.error && <p role="alert" className="mt-3 rounded-lg bg-danger/10 p-3 text-sm text-danger">That item is not available.</p>}
+      {sp.error && <p role="alert" className="mt-3 rounded-lg bg-danger/10 p-3 text-sm text-danger">{sp.error === "demo" ? "This is a sample listing and cannot be purchased online. Please contact us to enquire." : "That item is not available."}</p>}
       {active.length === 0 ? (
         <div className="card mt-6 p-10 text-center"><p className="font-display text-lg font-bold text-navy">Your cart is empty.</p><div className="mt-4 flex justify-center gap-3"><Link href="/cars" className="btn-primary">Browse cars</Link><Link href="/accessories" className="btn-ghost">Shop accessories</Link></div></div>
       ) : (

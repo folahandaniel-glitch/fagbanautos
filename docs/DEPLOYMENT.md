@@ -47,3 +47,12 @@ This creates the Super Admin and the ten staff accounts with **one-time password
 - Build fails on `prisma migrate deploy`: check `DIRECT_URL` is the non-pooled string.
 - Uploads fail in production: `STORAGE_DRIVER=blob` and the token must be set; local disk is not available on Vercel.
 - Paystack payments stay "processing": confirm the webhook URL and that the secret key is for the same mode (test/live).
+
+## Current production setup
+
+- Project: Vercel team FODAN, project **fagbanautos**, Git-linked to github.com/folahandaniel-glitch/fagbanautos (every push to main deploys to production).
+- URL: https://fagbanautos.vercel.app. Paystack webhook URL: https://fagbanautos.vercel.app/api/paystack/webhook
+- Database: Neon (pooled DATABASE_URL, unpooled DIRECT_URL). Migrations run automatically on production builds only.
+- Environment variables are stored in Vercel (Production): DATABASE_URL, DIRECT_URL, AUTH_SECRET, SETTINGS_ENCRYPTION_KEY, CRON_SECRET, APPLICATION_URL, STORAGE_DRIVER=blob, BLOB_READ_WRITE_TOKEN.
+- Do not change SETTINGS_ENCRYPTION_KEY after saving Paystack keys in the admin: stored secrets would become unreadable.
+- Cron: daily at 03:00 UTC (Hobby plan limit).

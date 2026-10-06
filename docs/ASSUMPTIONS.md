@@ -28,7 +28,7 @@ Tax invoice, quotation, payment receipt, payment statement, installment statemen
 - **Parts/accessory pending-order expiry:** only vehicle reservations expire automatically; unpaid parts orders keep their stock reserved until cancelled.
 - **Test coverage not done:** browser E2E (Playwright), automated accessibility (axe) and load testing. Responsive overflow was checked manually at 375px; real-device checks (Safari iPhone, Samsung Internet, etc.) are listed in `MANUAL_QA.md` for the owner.
 - **Paystack against the live API** was verified with a mocked gateway only; run the test-mode checks in `MANUAL_QA.md` with real test keys.
-- **Vercel deployment** was not performed (requires the owner's Vercel authentication, a production database and environment variables). The code is on GitHub at https://github.com/folahandaniel-glitch/fagbanautos.
+- **Live deployment:** https://fagbanautos.vercel.app (Vercel team FODAN, project fagbanautos; Neon PostgreSQL; Vercel Blob public store for uploads). Production has core data only (no demo vehicles). Search engines are told not to index until Settings > SEO > "Allow search engines to index" is switched on. Vercel Hobby limits cron jobs to once a day, so reservation expiry also runs as a throttled sweep during browsing and ordering.
 
 ## Compliance items needing real-world action
 

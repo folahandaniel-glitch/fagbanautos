@@ -17,7 +17,7 @@ const MIME: Record<string, string> = { jpg: "image/jpeg", jpeg: "image/jpeg", pn
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ path: string[] }> }) {
   const parts = (await ctx.params).path;
   // Product photos are public (they are shown on the storefront); every other upload needs an authorised session.
-  const publicFile = parts[0] === "products" && parts.length === 2;
+  const publicFile = parts[0] === "products" && (parts.length === 2 || (parts.length === 3 && parts[1] === "site"));
   const user = publicFile ? null : await getSessionUser();
   if (!publicFile && !user) return new Response("Unauthorized", { status: 401 });
   if (parts.some((p) => p.includes("..") || p.includes("\\") || p.startsWith("."))) return new Response("Bad request", { status: 400 });

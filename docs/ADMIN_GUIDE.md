@@ -40,3 +40,7 @@ Replace placeholder bank accounts, add Paystack keys, enter real contact details
 - **Website wording:** *Homepage and page text* (Settings) edits the hero, section titles, finance panel, trust cards and every main page heading and intro. Content editors can change wording without access to financial settings.
 - **Sample listings:** items marked demo hide their "demo" labels (`site.showDemoLabels`) and cannot be bought online (`catalogue.allowDemoPurchases` off); customers see an *Enquire on WhatsApp* button instead. Replace or archive them as real stock arrives.
 - **Passwords:** every password field has a Show/Hide button.
+
+## Carousel and About page
+- **Admin > Carousel:** add, reorder, hide or delete slides (picture upload, headline, tag, button text and link). With no slides, the site fills the banner with featured cars and accessories. Turn it on/off and set the speed in Settings > Homepage text.
+- **Admin > About and team:** add portraits and wording for the founders and any other people. Use "Create the founder cards" the first time. The story and headings are in Settings > Page text. All of this needs the `content:edit` permission, so it can be given to an assigned admin.

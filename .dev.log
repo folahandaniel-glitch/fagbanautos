@@ -1,0 +1,31 @@
+▲ Next.js 16.3.8 (Turbopack)
+- Local:         http://localhost:3100
+- Network:       http://192.168.1.196:3100
+- Environments: .env.local, .env
+✓ Ready in 2.7s
+✓ Running next.config.ts took 313ms
+
+ GET /about 200 in 2.2s (next.js: 724ms, application-code: 1474ms)
+ GET / 200 in 629ms (next.js: 130ms, application-code: 499ms)
+ GET /api/placeholder?kind=vehicle&make=MAN&model=TGS%20Truck&year=2021&colour=White&i=1 200 in 342ms (next.js: 309ms, application-code: 33ms)
+ GET /api/placeholder?kind=vehicle&make=FAGDAN&model=AutoGallery&year=2026&colour=blue&i=1 200 in 354ms (next.js: 346ms, application-code: 8ms)
+ GET /api/placeholder?kind=product&label=Tyre%20Products&brand=TerraGuard 200 in 24ms (next.js: 10ms, application-code: 14ms)
+ GET /api/placeholder?kind=vehicle&make=Jaguar&model=F-Pace&year=2023&colour=Midnight%20Blue&i=1 200 in 42ms (next.js: 30ms, application-code: 12ms)
+ GET /api/placeholder?kind=product&label=Car%20Covers&brand=ShadePro 200 in 45ms (next.js: 32ms, application-code: 13ms)
+ GET /api/placeholder?kind=product&label=Tyre%20Pressure%20Monitoring&brand=TrackSafe 200 in 43ms (next.js: 29ms, application-code: 13ms)
+ GET /api/placeholder?kind=vehicle&make=Volvo&model=XC90&year=2017&colour=White&i=1 200 in 67ms (next.js: 50ms, application-code: 18ms)
+ GET /api/placeholder?kind=vehicle&make=Land%20Rover&model=Range%20Rover%20Evoque&year=2016&colour=Black&i=1 200 in 23ms (next.js: 10ms, application-code: 14ms)
+ GET /api/placeholder?kind=vehicle&make=BYD&model=Atto%203&year=2023&colour=Black&i=1 200 in 23ms (next.js: 12ms, application-code: 11ms)
+ GET /api/placeholder?kind=vehicle&make=Tesla&model=Model%203&year=2023&colour=Brown&i=1 200 in 38ms (next.js: 27ms, application-code: 11ms)
+ GET /api/placeholder?kind=vehicle&make=Ford&model=Mustang&year=2016&colour=Brown&i=1 200 in 19ms (next.js: 9ms, application-code: 10ms)
+ GET /api/placeholder?kind=vehicle&make=Ford&model=Escape&year=2020&colour=Blue&i=1 200 in 37ms (next.js: 25ms, application-code: 12ms)
+ GET /api/placeholder?kind=vehicle&make=Isuzu&model=NPR%20Truck&year=2025&colour=Black&i=1 200 in 56ms (next.js: 43ms, application-code: 12ms)
+ GET /api/placeholder?kind=vehicle&make=Isuzu&model=NPR%20Truck&year=2023&colour=Blue&i=1 200 in 76ms (next.js: 62ms, application-code: 14ms)
+ GET /api/placeholder?kind=vehicle&make=Isuzu&model=NPR%20Truck&year=2021&colour=Blue&i=1 200 in 76ms (next.js: 64ms, application-code: 12ms)
+ GET /api/placeholder?kind=vehicle&make=Isuzu&model=NPR%20Truck&year=2018&colour=Pearl%20White&i=1 200 in 92ms (next.js: 80ms, application-code: 12ms)
+ GET /api/placeholder?kind=vehicle&make=MAN&model=TGS%20Truck&year=2018&colour=Champagne&i=1 200 in 110ms (next.js: 94ms, application-code: 16ms)
+ GET /api/placeholder?kind=vehicle&make=Mercedes-Benz&model=Sprinter&year=2023&colour=Brown&i=1 200 in 130ms (next.js: 105ms, application-code: 25ms)
+ GET /api/placeholder?kind=vehicle&make=Mercedes-Benz&model=Sprinter&year=2021&colour=Red&i=1 200 in 162ms (next.js: 88ms, application-code: 74ms)
+[browser] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+ GET /about 200 in 291ms (next.js: 10ms, application-code: 281ms)
+ GET /about 200 in 181ms (next.js: 31ms, application-code: 150ms)

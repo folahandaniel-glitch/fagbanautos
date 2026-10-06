@@ -4,9 +4,12 @@ import { InstallPrompt, PwaRegister } from "@/components/site/PwaClient";
 import { getSettings } from "@/lib/settings";
 import { getSite } from "@/lib/site";
 import { cartCount } from "@/lib/cart";
+import { Carousel } from "@/components/site/Carousel";
+import { getSlides } from "@/lib/site-content";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const [s, site, count] = await Promise.all([getSettings("pwa."), getSite(), cartCount()]);
+  const [s, site, count, car] = await Promise.all([getSettings("pwa."), getSite(), cartCount(), getSettings("carousel.")]);
+  const slides = car["carousel.enabled"] === false ? [] : await getSlides(car["carousel.auto"] !== false);
   return (
     <>
       <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-lg focus:bg-white focus:px-4 focus:py-2">Skip to content</a>
@@ -16,6 +19,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         </div>
       )}
       <Header />
+      <Carousel slides={slides} seconds={Number(car["carousel.seconds"]) || 6} />
       <main id="main" className="flex-1">{children}</main>
       <Footer />
       <WhatsAppFab />

@@ -1015,3 +1015,36 @@ model PageView {
 
   @@index([kind, createdAt])
 }
+
+/// Big rotating banner shown on the public pages. Edited in Admin > Carousel.
+model Slide {
+  id        String   @id @default(cuid())
+  title     String
+  subtitle  String?
+  badge     String?
+  imageUrl  String
+  imageAlt  String?
+  ctaLabel  String?
+  ctaHref   String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}
+
+/// People shown on the About page (owners, directors, team). Edited in Admin > About and team.
+model TeamMember {
+  id        String   @id @default(cuid())
+  name      String
+  role      String
+  bio       String?
+  photoUrl  String?
+  sortOrder Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, sortOrder])
+}

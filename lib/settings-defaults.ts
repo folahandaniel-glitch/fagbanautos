@@ -134,6 +134,13 @@ export const SETTING_DEFS: Record<string, SettingDef> = {
   "pages.imports.button": { value: "I want FAGDAN to source/import this vehicle", group: "pagetext", label: "Imports button text" },
   "pages.sell.title": { value: "Sell, trade in or swap your car", group: "pagetext", label: "Sell/swap heading" },
   "pages.sell.intro": { value: "Tell us about your car. An appraiser will value it and make you an offer. Use it as a trade-in credit toward your next purchase, or swap it for another vehicle.", group: "pagetext", label: "Sell/swap intro", type: "textarea" },
+  "carousel.enabled": { value: true, group: "homepage", label: "Show the big picture carousel on public pages", type: "boolean" },
+  "carousel.seconds": { value: 6, group: "homepage", label: "Carousel: seconds per slide", type: "number" },
+  "carousel.auto": { value: true, group: "homepage", label: "Carousel: fill with featured cars and accessories when no slides have been added", type: "boolean", help: "Add your own slides in Admin > Carousel." },
+  "pages.about.heading": { value: "About FAGDAN Automotive Group", group: "pagetext", label: "About page heading" },
+  "pages.about.story": { value: "FAGDAN Automotive Group is a Nigerian automotive commerce company built on one idea: buying a car, a part or a service should be clear, fair and safe.\n\nThrough FAGDAN AutoGallery we offer new and quality used vehicles, genuine and aftermarket parts, accessories and car technology, auto care, vehicle imports and flexible installment plans, all with transparent pricing, verified listings and secure online payment.\n\nWe are driven by trust and powered by choice. Every customer is treated as a long-term relationship, not a single sale.", group: "pagetext", label: "About page: our story (blank lines start a new paragraph)", type: "textarea" },
+  "pages.about.teamTitle": { value: "The people behind FAGDAN", group: "pagetext", label: "About page: team heading" },
+  "pages.about.teamIntro": { value: "FAGDAN is owned and led by its founders, who stand behind every vehicle and every promise we make.", group: "pagetext", label: "About page: team introduction", type: "textarea" },
   "pages.about.points": { value: "Trust: transparent pricing and verified listings\nChoice: vehicles, parts, accessories, care, finance and imports\nTechnology: secure online payments and live tracking\nService: people who pick up the phone", group: "pagetext", label: "About page highlights (one per line)", type: "textarea" },
   "pages.contact.intro": { value: "Reach us by phone, WhatsApp, email or the form below. We reply within one business day.", group: "pagetext", label: "Contact page intro", type: "textarea" },
   // Notifications
@@ -147,6 +154,6 @@ export function settingPermission(key: string): string {
   if (key.startsWith("installment.")) return "settings:installment";
   if (key.startsWith("payments.")) return "settings:bank";
   if (key.startsWith("currency.") || key.startsWith("orders.")) return "settings:pricing";
-  if (key.startsWith("home.") || key.startsWith("pages.") || key.startsWith("seo.")) return "content:edit"; // website wording: Content and SEO managers can edit it
+  if (key.startsWith("home.") || key.startsWith("carousel.") || key.startsWith("pages.") || key.startsWith("seo.")) return "content:edit"; // website wording: Content and SEO managers can edit it
   return "settings:manage";
 }

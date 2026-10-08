@@ -50,3 +50,11 @@ Replace placeholder bank accounts, add Paystack keys, enter real contact details
 - The **Pictures** box on the Add Product form accepts as many of your own pictures as you like (max 12). Reorder, replace or delete them later under Photos.
 - Vendor pictures are usually copyrighted. Use them only if you are an authorised seller or have the vendor's permission, and replace any you are unsure about.
 - Footer headings and links and the WhatsApp message are editable in Settings > Page text.
+
+## Photo finder, dropshipping and security (ported from the Business Hub build)
+- **Admin > Photo finder:** shows how many listings still have an illustration, runs "Find photos now" with a progress bar and Stop button, and keeps running once a day by itself. Add a Brave Search API key there (stored encrypted, or set `BRAVE_SEARCH_API_KEY`). By default only the manufacturer's official site is accepted and a photo must mention the model. Auto-found photos carry an amber "Auto-found: check" badge linking to their source; "Search again" and "Use the illustration" are on each product's Photos section. Uploaded photos are never replaced.
+- **Excel import:** SKU, Inventory ID and Stock Number are optional. A blank SKU matches an existing product with the same name, otherwise the next code is generated.
+- **Dropshipping:** on a product set Fulfilment to Partner company, with the partner and delivery days. Those goods appear on /dropshipping for signed-in customers and can always be ordered.
+- **Security:** passwords found in known breaches are refused (checked with a privacy-safe k-anonymity lookup). Settings > Security sets how long staff stay signed in and can require two-step sign-in for all staff.
+- **Storage:** set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` and `R2_PUBLIC_URL` to store pictures in Cloudflare R2 instead of Vercel Blob.
+- **Phones:** scroll-up and scroll-down buttons float on small screens, on the website and in the admin.

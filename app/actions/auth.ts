@@ -1,12 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { isBreachedPassword, BREACH_MESSAGE } from "@/lib/auth/breach";
 import { z } from "zod";
 import { verifyTotp } from "@/lib/totp";
 import { db } from "@/lib/db";
 import { audit } from "@/lib/audit";
 import { rateLimit } from "@/lib/rate-limit";
-import { createSession, destroySession, getSessionUser, hashPassword, validatePasswordStrength, verifyPassword } from "@/lib/auth/session";
+import { createSession, staffSessionSeconds, destroySession, getSessionUser, hashPassword, validatePasswordStrength, verifyPassword } from "@/lib/auth/session";
 import { decryptSecret } from "@/lib/crypto";
 
 const MAX_FAILS = 5;
@@ -34,6 +35,7 @@ export async function registerCustomer(formData: FormData) {
   if (!parsed.success) redirect("/account/register?error=invalid");
   const weak = validatePasswordStrength(parsed.data.password);
   if (weak) redirect(`/account/register?error=${encodeURIComponent(weak)}`);
+  if (await isBreachedPassword(parsed.data.password)) redirect(`/account/register?error=${encodeURIComponent(BREACH_MESSAGE)}`);
   if (formData.get("consent") !== "on") redirect("/account/register?error=consent");
   const exists = await db.user.findUnique({ where: { email: parsed.data.email } });
   if (exists) redirect("/account/register?error=exists");
@@ -74,7 +76,7 @@ export async function login(formData: FormData) {
     }
   }
   await db.user.update({ where: { id: user.id }, data: { failedLogins: 0, lockedUntil: null, lastLoginAt: new Date() } });
-  await createSession(user.id, user.sessionVersion);
+  await createSession(user.id, user.sessionVersion, user.kind === "STAFF" ? await staffSessionSeconds() : undefined);
   await audit({ actorId: user.id, action: "auth.login", targetType: "User", targetId: user.id });
   if (user.kind === "STAFF") redirect(user.mustChangePassword ? "/admin/change-password" : portal === "admin" ? next : "/admin");
   redirect(next);
@@ -102,6 +104,7 @@ export async function changePassword(formData: FormData) {
   if (next !== confirm) fail("match");
   const weak = validatePasswordStrength(next);
   if (weak) fail(weak);
+  if (await isBreachedPassword(next)) fail(BREACH_MESSAGE);
   if (await verifyPassword(row.passwordHash, next).catch(() => false)) fail("same");
   const updated = await db.user.update({ where: { id: u.id }, data: { passwordHash: await hashPassword(next), mustChangePassword: false, sessionVersion: { increment: 1 } } });
   await createSession(updated.id, updated.sessionVersion); // other sessions are revoked by the version bump

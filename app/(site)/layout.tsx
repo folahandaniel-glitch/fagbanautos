@@ -4,6 +4,7 @@ import { InstallPrompt, PwaRegister } from "@/components/site/PwaClient";
 import { getSettings } from "@/lib/settings";
 import { getSite } from "@/lib/site";
 import { cartCount } from "@/lib/cart";
+import { ScrollButtons } from "@/components/ui/ScrollButtons";
 import { Carousel } from "@/components/site/Carousel";
 import { getSlides } from "@/lib/site-content";
 
@@ -23,6 +24,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <main id="main" className="flex-1">{children}</main>
       <Footer />
       <WhatsAppFab />
+      <ScrollButtons className="bottom-24" />
       <MobileBottomNav cartCount={count} />
       <PwaRegister />
       <InstallPrompt

@@ -3,6 +3,7 @@ import { Prisma, type Condition, type ProductType } from "@prisma/client";
 import { db } from "../db";
 import { audit } from "../audit";
 import { nairaToKobo } from "../money";
+import { generateSku, generateInventoryId, generateStockNumber } from "../sku";
 
 export const COLUMNS = [
   "Product Type", "Division", "SKU", "Inventory ID", "Stock Number", "VIN", "Make", "Model", "Trim", "Year", "Condition", "Origin", "Category", "Subcategory",
@@ -36,7 +37,7 @@ export async function buildTemplate(): Promise<Buffer> {
   [
     ["How to use", "Fill the Inventory sheet (one product per row), save, then upload it in Admin > Excel import. You will see a preview with any errors before anything is imported."],
     ["Product Type", `One of: ${TYPES.join(", ")}.`], ["Division", "The division slug, e.g. autogallery, auto-parts, auto-accessories, auto-technology."],
-    ["SKU", "Unique. Existing SKUs are updated, new SKUs are created."], ["Vehicles", "Need Inventory ID, Stock Number, Make, Model, Year, Body Type, Fuel Type, Transmission. VIN must be unique."],
+    ["SKU", "Optional. Leave blank and the system generates the next code. A row whose SKU (or, when blank, name) matches an existing product updates it."], ["Vehicles", "Need Make, Model, Year, Body Type, Fuel Type, Transmission (Inventory ID and Stock Number are generated if blank). VIN must be unique."],
     ["Money", "Price and Discount are in Naira (not kobo). VAT Applicable and Installment Available: YES or NO."],
     ["Compatibility", "Separate vehicles with ';'. Each: Make | Model | Year from | Year to. Example: Toyota | Camry | 2018 | 2024; Honda | Accord | 2016 | 2022"],
     ["Features", "Separate with ';'."], ["Images", "Image 1-10: https URLs ending .jpg, .jpeg, .png or .webp. Rows with no image get a branded placeholder and are flagged 'needs image'."],
@@ -73,7 +74,7 @@ export async function parseWorkbook(buf: Buffer): Promise<{ rows: ParsedRow[]; f
   if (!ws) return { rows: [], fatal: "The workbook has no sheets." };
   const headers = new Map<number, Col>();
   ws.getRow(1).eachCell((cell, n) => { const h = cellText(cell.value) as Col; if ((COLUMNS as readonly string[]).includes(h)) headers.set(n, h); });
-  const missing = ["Product Type", "SKU", "Price"].filter((c) => ![...headers.values()].includes(c as Col));
+  const missing = ["Product Type", "Price"].filter((c) => ![...headers.values()].includes(c as Col));
   if (missing.length) return { rows: [], fatal: `Missing required column(s): ${missing.join(", ")}. Download the latest template.` };
   if (ws.rowCount > 5001) return { rows: [], fatal: "Too many rows (maximum 5000 per import)." };
   const rows: ParsedRow[] = [];
@@ -87,8 +88,9 @@ export async function parseWorkbook(buf: Buffer): Promise<{ rows: ParsedRow[]; f
     const errors: string[] = [], warnings: string[] = [];
     const t = data["Product Type"].toUpperCase();
     if (!TYPES.includes(t)) errors.push(`Product Type must be one of ${TYPES.join(", ")}`);
-    if (!data.SKU || data.SKU.length < 2) errors.push("SKU is required");
-    else if (seenSku.has(data.SKU.toLowerCase())) errors.push("Duplicate SKU in this file"); else seenSku.add(data.SKU.toLowerCase());
+    data.SKU = data.SKU ?? "";
+    if (data.SKU && data.SKU.length < 2) errors.push("SKU is too short (leave it blank to generate one)");
+    else if (data.SKU) { if (seenSku.has(data.SKU.toLowerCase())) errors.push("Duplicate SKU in this file"); else seenSku.add(data.SKU.toLowerCase()); }
     if (!data.Division) errors.push("Division is required"); else if (!divisions.has(data.Division)) errors.push(`Unknown division "${data.Division}"`);
     const price = Number(data.Price.replace(/[,₦\s]/g, ""));
     if (!Number.isFinite(price) || price < 0) errors.push("Price must be a number in Naira");
@@ -98,7 +100,7 @@ export async function parseWorkbook(buf: Buffer): Promise<{ rows: ParsedRow[]; f
     if (data.Status && !STATUSES.includes(data.Status.toUpperCase())) errors.push("Status must be DRAFT, ACTIVE or ARCHIVED");
     if (!data.Name && t !== "VEHICLE") errors.push("Name is required");
     if (t === "VEHICLE") {
-      for (const c of ["Inventory ID", "Stock Number", "Make", "Model", "Year", "Body Type", "Fuel Type", "Transmission"] as Col[]) if (!data[c]) errors.push(`${c} is required for vehicles`);
+      for (const c of ["Make", "Model", "Year", "Body Type", "Fuel Type", "Transmission"] as Col[]) if (!data[c]) errors.push(`${c} is required for vehicles`);
       if (data.Year && !/^(19|20)\d{2}$/.test(data.Year)) errors.push("Year must be a 4-digit year");
       if (data.VIN) { if (!/^[A-HJ-NPR-Z0-9]{11,17}$/i.test(data.VIN)) errors.push("VIN must be 11-17 letters/digits (no I, O, Q)"); else if (seenVin.has(data.VIN.toUpperCase())) errors.push("Duplicate VIN in this file"); else seenVin.add(data.VIN.toUpperCase()); }
       if (data["Stock Number"]) { if (seenStock.has(data["Stock Number"])) errors.push("Duplicate Stock Number in this file"); else seenStock.add(data["Stock Number"]); }
@@ -111,6 +113,8 @@ export async function parseWorkbook(buf: Buffer): Promise<{ rows: ParsedRow[]; f
   });
   // Cross-check against the database for conflicting unique values owned by OTHER products
   const skus = rows.map((r) => r.data.SKU).filter(Boolean);
+  const names = rows.filter((r) => !r.data.SKU && r.data.Name).map((r) => r.data.Name);
+  const byName = new Set((await db.product.findMany({ where: { name: { in: names } }, select: { name: true } })).map((e) => `${e.name.toLowerCase()}`));
   const existing = await db.product.findMany({ where: { sku: { in: skus } }, select: { sku: true, vehicle: { select: { vin: true, stockNumber: true, inventoryId: true } } } });
   const bySku = new Map(existing.map((e) => [e.sku.toLowerCase(), e]));
   const vins = rows.map((r) => r.data.VIN?.toUpperCase()).filter(Boolean);
@@ -118,14 +122,15 @@ export async function parseWorkbook(buf: Buffer): Promise<{ rows: ParsedRow[]; f
   const invs = rows.map((r) => r.data["Inventory ID"]).filter(Boolean);
   const clash = await db.vehicle.findMany({ where: { OR: [{ vin: { in: vins } }, { stockNumber: { in: stocks } }, { inventoryId: { in: invs } }] }, select: { vin: true, stockNumber: true, inventoryId: true, product: { select: { sku: true } } } });
   for (const r of rows) {
-    const own = r.data.SKU?.toLowerCase();
+    const own = r.data.SKU?.toLowerCase() ?? "";
     for (const c of clash) {
       if (c.product.sku.toLowerCase() === own) continue;
       if (r.data.VIN && c.vin === r.data.VIN.toUpperCase()) r.errors.push(`VIN already belongs to ${c.product.sku}`);
       if (r.data["Stock Number"] && c.stockNumber === r.data["Stock Number"]) r.errors.push(`Stock Number already belongs to ${c.product.sku}`);
       if (r.data["Inventory ID"] && c.inventoryId === r.data["Inventory ID"]) r.errors.push(`Inventory ID already belongs to ${c.product.sku}`);
     }
-    if (bySku.has(own)) r.warnings.push("SKU exists: this row will UPDATE the existing product");
+    if (!own) r.warnings.push(byName.has((r.data.Name ?? "").toLowerCase()) ? "No SKU: a product with this name exists and will be UPDATED" : "No SKU: one will be generated automatically");
+    else if (bySku.has(own)) r.warnings.push("SKU exists: this row will UPDATE the existing product");
   }
   return { rows };
 }
@@ -162,12 +167,15 @@ export async function importRows(rows: ParsedRow[], actorId: string, jobId: stri
           status: (d.Status ? d.Status.toUpperCase() : "DRAFT") as "DRAFT" | "ACTIVE" | "ARCHIVED", needsImage: imgs.length === 0,
         };
         const stock = type === "VEHICLE" ? 1 : Math.max(0, Math.floor(Number(d["Stock Quantity"] || 0)));
-        const existing = await tx.product.findUnique({ where: { sku: d.SKU } });
+        const type2 = type;
+        const existing = d.SKU ? await tx.product.findUnique({ where: { sku: d.SKU } }) : await tx.product.findFirst({ where: { name, type: type2, condition: common.condition ?? undefined } });
+        const newSku = existing ? existing.sku : d.SKU || (await generateSku(type));
         const p = existing
           ? await tx.product.update({ where: { id: existing.id }, data: { ...common, ...(type === "VEHICLE" ? {} : { stockOnHand: stock }) } })
-          : await tx.product.create({ data: { ...common, sku: d.SKU, slug: `${slugify(name)}-${slugify(d.SKU)}`, stockOnHand: stock } });
+          : await tx.product.create({ data: { ...common, sku: newSku, slug: `${slugify(name)}-${slugify(newSku)}`, stockOnHand: stock } });
         if (type === "VEHICLE") {
-          const veh = { inventoryId: d["Inventory ID"], stockNumber: d["Stock Number"], vin: d.VIN ? d.VIN.toUpperCase() : null, makeName: d.Make, modelName: d.Model, trim: d.Trim || null, year: Number(d.Year), bodyType: d["Body Type"], fuelType: d["Fuel Type"], transmission: d.Transmission, driveType: d["Drive Type"] || null, engine: d.Engine || null, horsepower: d.Horsepower ? Number(d.Horsepower) : null, mileageKm: d.Mileage ? Number(d.Mileage) : null, colour: d.Colour || null, installmentAvailable: yes(d["Installment Available"] || ""), minDepositBps: d["Minimum Deposit"] ? Math.round(Number(d["Minimum Deposit"]) * 100) : null };
+          const prior = existing ? await tx.vehicle.findUnique({ where: { productId: existing.id } }) : null;
+          const veh = { inventoryId: d["Inventory ID"] || prior?.inventoryId || (await generateInventoryId()), stockNumber: d["Stock Number"] || prior?.stockNumber || (await generateStockNumber(Number(d.Year))), vin: d.VIN ? d.VIN.toUpperCase() : null, makeName: d.Make, modelName: d.Model, trim: d.Trim || null, year: Number(d.Year), bodyType: d["Body Type"], fuelType: d["Fuel Type"], transmission: d.Transmission, driveType: d["Drive Type"] || null, engine: d.Engine || null, horsepower: d.Horsepower ? Number(d.Horsepower) : null, mileageKm: d.Mileage ? Number(d.Mileage) : null, colour: d.Colour || null, installmentAvailable: yes(d["Installment Available"] || ""), minDepositBps: d["Minimum Deposit"] ? Math.round(Number(d["Minimum Deposit"]) * 100) : null };
           await tx.vehicle.upsert({ where: { productId: p.id }, create: { productId: p.id, ...veh }, update: veh });
         }
         if (d.Compatibility) {

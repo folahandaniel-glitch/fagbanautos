@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { SmartImage } from "@/components/ui/media";
-import { deleteImage, makePrimary, moveImage, saveAlt, autoFindPhotos, addImageByLink } from "@/app/actions/admin-images";
+import { deleteImage, makePrimary, moveImage, saveAlt, autoFindPhotos, addImageByLink, refindPhotos, useIllustration } from "@/app/actions/admin-images";
 
 export interface ManagedImage { id: string; url: string; alt: string | null; credit: string | null; sourceUrl: string | null; isPlaceholder: boolean; width: number | null; height: number | null; bytes: number | null }
 
@@ -70,7 +70,8 @@ export function ImageManager({ productId, images, canEdit, productName }: { prod
               <div className="relative aspect-[3/2] overflow-hidden rounded-lg bg-brand-50"><SmartImage src={img.url} alt={img.alt ?? productName} className="h-full w-full object-cover" sizes="300px" /></div>
               <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs">
                 {i === 0 && <span className="chip">Main photo</span>}
-                {img.isPlaceholder ? <span className="badge-gold">Placeholder</span> : null}
+                {img.isPlaceholder ? <span className="badge-gold">Illustration</span> : null}
+                {!img.isPlaceholder && img.sourceUrl ? <a href={img.sourceUrl} target="_blank" rel="noopener noreferrer" className="rounded-full bg-warn/15 px-2 py-0.5 font-semibold text-warn" title="Found automatically. Open the page it came from and check it suits this product.">Auto-found: check</a> : null}
                 {img.bytes ? <span className="text-muted">{Math.round(img.bytes / 1024)} KB{img.width ? ` · ${img.width}×${img.height}` : ""}</span> : null}
               </p>
               {canEdit && (
@@ -107,6 +108,8 @@ export function ImageManager({ productId, images, canEdit, productName }: { prod
           </div>
           <div className="flex flex-wrap items-end gap-3">
             <form action={autoFindPhotos}><input type="hidden" name="productId" value={productId} /><button className="btn-primary">Find photos automatically</button></form>
+            <form action={refindPhotos}><input type="hidden" name="productId" value={productId} /><button className="btn-ghost" title="Removes photos the system found earlier and searches again. Your uploads are kept.">Search again</button></form>
+            <form action={useIllustration}><input type="hidden" name="productId" value={productId} /><button className="btn-ghost" title="Remove automatic photos, show the illustration and stop searching">Use the illustration</button></form>
             <form action={addImageByLink} className="flex flex-1 items-end gap-2"><input type="hidden" name="productId" value={productId} />
               <div className="flex-1"><label className="label" htmlFor="img-link">Or add a photo from a link</label><input id="img-link" name="url" type="url" placeholder="https://…" className="input" /></div>
               <button className="btn-ghost">Add</button></form>

@@ -52,6 +52,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           <p className="mt-4 font-display text-3xl font-extrabold text-navy">{formatNaira(Number(p.price) - Number(p.discount))}</p>
           {Number(p.discount) > 0 && <p className="text-sm text-muted line-through">{formatNaira(Number(p.price))}</p>}
           {quote && <p className="mt-1 text-xs text-muted">Includes no VAT yet: VAT {formatNaira(quote.pricing.vatTotal)} is added at checkout, total {formatNaira(quote.pricing.grandTotal)}.</p>}
+          {p.fulfilment === "DROPSHIP" && <p className="mt-3 rounded-xl bg-brand-50 p-3 text-sm text-navy"><strong>Partner-supplied.</strong> {p.dropshipPartner ? `Shipped by ${p.dropshipPartner}. ` : ""}{p.dropshipLeadDays ? `Delivery in about ${p.dropshipLeadDays} day${p.dropshipLeadDays === 1 ? "" : "s"} after payment. ` : ""}FAGDAN provides your receipt, warranty and support.</p>}
           <p className={`mt-3 text-sm font-semibold ${inStock ? "text-ok" : "text-danger"}`}>{inStock ? (available > 0 && available <= p.lowStockThreshold ? `Only ${available} left` : "In stock") : "Out of stock"}</p>
 
           {universal && <p className="mt-4 rounded-xl bg-warn/10 p-3 text-sm text-ink"><strong>Universal fit.</strong> We cannot confirm this item fits every vehicle. Please check dimensions or ask our team on WhatsApp before ordering.</p>}

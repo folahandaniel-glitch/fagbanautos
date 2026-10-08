@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const ERRORS: Record<string, string> = { current: "Your current password is incorrect.", match: "The new passwords do not match.", same: "Choose a password different from the current one." };
 
 export default async function Profile({ searchParams }: { searchParams: Promise<{ notice?: string; error?: string; setup?: string }> }) {
-  const u = await requireStaffPage();
+  const u = await requireStaffPage(undefined, { skip2fa: true });
   const sp = await searchParams;
   const row = await db.user.findUniqueOrThrow({ where: { id: u.id } });
   const card = await db.teamMember.findUnique({ where: { userId: u.id } });

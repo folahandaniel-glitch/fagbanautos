@@ -1,3 +1,4 @@
+import { db } from "../db";
 import { redirect } from "next/navigation";
 import { getSessionUser, type SessionUser } from "./session";
 
@@ -29,10 +30,14 @@ export async function requireCustomer(): Promise<SessionUser> {
 }
 
 /** For pages: redirect instead of throwing. */
-export async function requireStaffPage(permission?: string): Promise<SessionUser> {
+export async function requireStaffPage(permission?: string, opts: { skip2fa?: boolean } = {}): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || user.kind !== "STAFF") redirect("/admin/login");
   if (user.mustChangePassword) redirect("/admin/change-password");
+  if (!opts.skip2fa && !user.totpEnabled) {
+    const row = await db.setting.findUnique({ where: { key: "security.requireStaff2fa" } });
+    if (row?.value === true) redirect("/admin/profile?error=" + encodeURIComponent("Two-step sign-in is required for staff. Set it up below to continue."));
+  }
   if (permission && !user.permissions.has(permission)) redirect("/admin?denied=1");
   return user;
 }

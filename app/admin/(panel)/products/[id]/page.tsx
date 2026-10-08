@@ -99,6 +99,11 @@ export default async function ProductEditor({ params, searchParams }: { params: 
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="vatApplicable" defaultChecked={p?.vatApplicable ?? true} disabled={!canSave} className="h-4 w-4" /> Subject to VAT</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="featured" defaultChecked={p?.featured} disabled={!canSave} className="h-4 w-4" /> Featured</label>
           </section>
+          <section className="card space-y-4 p-5"><h2 className="font-display text-lg font-bold text-navy">Fulfilment</h2>
+            <div><label className="label" htmlFor="fulfilment">Who supplies it?</label><select id="fulfilment" name="fulfilment" defaultValue={p?.fulfilment ?? "STOCK"} className="input" disabled={!canSave}><option value="STOCK">Our own stock</option><option value="DROPSHIP">Partner company (dropshipping)</option></select></div>
+            {field("dropshipPartner", "Partner company (dropshipping only)", p?.dropshipPartner)}
+            {field("dropshipLeadDays", "Delivery time in days (dropshipping only)", p?.dropshipLeadDays, { inputMode: "numeric" })}
+            <p className="text-xs text-muted">Dropshipped items are shown to signed-in customers on the Dropshipping page and can always be ordered; you place the order with the partner after payment.</p></section>
           {!isVehicle && (
             <section className="card space-y-4 p-5"><h2 className="font-display text-lg font-bold text-navy">Stock</h2>
               {field("stockOnHand", "On hand", p?.stockOnHand ?? 0, { inputMode: "numeric" })}

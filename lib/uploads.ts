@@ -30,10 +30,23 @@ export async function validateUpload(file: File, rule: UploadRule): Promise<{ by
   return { bytes, ext: sig.ext[0], mime: sig.mime };
 }
 
+function r2Config() {
+  const { R2_ACCOUNT_ID: account, R2_ACCESS_KEY_ID: key, R2_SECRET_ACCESS_KEY: secret, R2_BUCKET: bucket, R2_PUBLIC_URL: publicUrl } = process.env;
+  return account && key && secret && bucket && publicUrl ? { account, key, secret, bucket, publicUrl } : null;
+}
+
 /** Storage driver. Local disk in development; Vercel Blob (public store, SDK) in production. Files get random, unguessable names. */
 export async function storeFile(bytes: Uint8Array, ext: string, mime: string, folder: string): Promise<string> {
   const name = `${folder}/${Date.now()}-${randomBytes(12).toString("hex")}.${ext}`;
-  const driver = process.env.STORAGE_DRIVER ?? "local";
+  const r2 = r2Config();
+  if (r2 && (process.env.STORAGE_DRIVER ?? "r2") === "r2") {
+    // Cloudflare R2 (S3-compatible): free egress, public bucket address in R2_PUBLIC_URL.
+    const { S3Client, PutObjectCommand } = await import("@aws-sdk/client-s3");
+    const client = new S3Client({ region: "auto", endpoint: `https://${r2.account}.r2.cloudflarestorage.com`, credentials: { accessKeyId: r2.key, secretAccessKey: r2.secret } });
+    await client.send(new PutObjectCommand({ Bucket: r2.bucket, Key: name, Body: Buffer.from(bytes), ContentType: mime, CacheControl: "public, max-age=31536000, immutable" }));
+    return `${r2.publicUrl.replace(/[/]+$/, "")}/${name}`;
+  }
+  const driver = process.env.STORAGE_DRIVER === "r2" ? "local" : (process.env.STORAGE_DRIVER ?? "local");
   if (driver === "blob") {
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) throw new Error("BLOB_READ_WRITE_TOKEN is not set");

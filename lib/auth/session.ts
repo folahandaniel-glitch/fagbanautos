@@ -26,15 +26,22 @@ export function validatePasswordStrength(pw: string): string | null {
   return null;
 }
 
-export async function createSession(userId: string, sessionVersion: number): Promise<void> {
+/** Staff sessions are shorter than customer sessions; the length is a setting (hours). */
+export async function staffSessionSeconds(): Promise<number> {
+  const row = await db.setting.findUnique({ where: { key: "security.staffSessionHours" } });
+  const h = Number(row?.value ?? 12);
+  return Math.round((Number.isFinite(h) ? Math.min(168, Math.max(1, h)) : 12) * 3600);
+}
+
+export async function createSession(userId: string, sessionVersion: number, maxAgeS: number = MAX_AGE_S): Promise<void> {
   const token = await new SignJWT({ sv: sessionVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(userId)
     .setIssuedAt()
-    .setExpirationTime(`${MAX_AGE_S}s`)
+    .setExpirationTime(`${maxAgeS}s`)
     .sign(secret());
   const jar = await cookies();
-  jar.set(COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: MAX_AGE_S });
+  jar.set(COOKIE, token, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: maxAgeS });
 }
 
 export async function destroySession(): Promise<void> {
@@ -50,6 +57,7 @@ export interface SessionUser {
   roleKey: string | null;
   permissions: Set<string>;
   mustChangePassword: boolean;
+  totpEnabled: boolean;
   customerId: string | null;
 }
 
@@ -72,6 +80,7 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
       roleKey: u.role?.key ?? null,
       permissions: new Set(u.role ? roleKeys(u.role.key) : []),
       mustChangePassword: u.mustChangePassword,
+      totpEnabled: u.totpEnabled,
       customerId: u.customer?.id ?? null,
     };
   } catch {

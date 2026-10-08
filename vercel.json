@@ -3,6 +3,6 @@
   "framework": "nextjs",
   "installCommand": "npm ci",
   "buildCommand": "if [ \"$VERCEL_ENV\" = \"production\" ]; then npx prisma migrate deploy; fi && npm run build",
-  "crons": [{ "path": "/api/cron/reservations", "schedule": "0 3 * * *" }],
+  "crons": [{ "path": "/api/cron/reservations", "schedule": "0 3 * * *" }, { "path": "/api/cron/photos", "schedule": "30 3 * * *" }],
   "functions": { "app/api/paystack/webhook/route.ts": { "maxDuration": 30 } }
 }

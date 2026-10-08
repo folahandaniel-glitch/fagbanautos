@@ -5,6 +5,8 @@ import { downloadImage, searchCommons, type FoundPhoto } from "./commons";
 import { optimiseImage } from "./optimize";
 import { fetchPublicImage } from "./safe-fetch";
 import { findVendorPhotos, type VendorPhoto } from "./vendor";
+import { findProductPhotos, getBraveKey, ImageSearchError } from "./search";
+import { getSetting } from "../settings";
 
 export interface StoredPhoto { url: string; width: number; height: number; bytes: number; credit: string | null; sourceUrl: string | null }
 
@@ -101,6 +103,19 @@ export async function autoPhotosForProduct(productId: string, want = 3): Promise
   const p = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { vehicle: true, category: true, brand: true } });
   const vendor = p.sourcePageUrl || p.brand?.websiteUrl ? await storeVendorPhotos(await findVendorPhotos({ pageUrl: p.sourcePageUrl, siteUrl: p.brand?.websiteUrl, name: p.name, brand: p.brand?.name, want }), want) : [];
   let photos = vendor;
+  let searchFailed = false;
+  if (photos.length < want && (await getSetting<boolean>("images.autoSearch")) && (await getBraveKey())) {
+    try {
+      const vendorOnly = (await getSetting<boolean>("images.vendorOnly")) !== false;
+      const cands = await findProductPhotos({ name: p.name, brand: p.brand?.name }, { vendorOnly });
+      const found: VendorPhoto[] = cands.map((c) => ({ url: c.imageUrl, sourceUrl: c.pageUrl || c.imageUrl, credit: c.official ? `Image from ${p.brand?.name ?? "the manufacturer"} official website (${c.host}).` : `Image found by web search (${c.host}). Check you may use it.` }));
+      photos = [...photos, ...(await storeVendorPhotos(found, want - photos.length))];
+    } catch (e) {
+      searchFailed = e instanceof ImageSearchError && e.retryable;
+      console.warn("[photo-search]", (e as Error).message);
+    }
+  }
+  if (!searchFailed) await db.product.update({ where: { id: productId }, data: { photoCheckedAt: new Date() } });
   if (photos.length < want) {
     const queries = photoQueries({ type: p.type, name: p.name, category: p.category?.name, make: p.vehicle?.makeName, model: p.vehicle?.modelName, year: p.vehicle?.year });
     photos = [...vendor, ...(await findStoredPhotos(queries, want - vendor.length, p.type === "VEHICLE"))];

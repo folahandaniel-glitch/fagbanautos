@@ -54,9 +54,12 @@ export async function saveProduct(formData: FormData) {
     vatApplicable: formData.get("vatApplicable") === "on", condition: (str(formData.get("condition")) || null) as never, origin: str(formData.get("origin")) || null,
     partGrade: (str(formData.get("partGrade")) || null) as never, partNumber: str(formData.get("partNumber")) || null, warranty: str(formData.get("warranty")) || null,
     features: str(formData.get("features")).split("\n").map((s) => s.trim()).filter(Boolean), videoUrl: str(formData.get("videoUrl")) || null,
+    fulfilment: str(formData.get("fulfilment")) === "DROPSHIP" ? "DROPSHIP" : "STOCK",
+    dropshipPartner: str(formData.get("dropshipPartner")).slice(0, 120) || null,
+    dropshipLeadDays: Math.min(120, Math.max(0, Math.floor(num(formData.get("dropshipLeadDays")) ?? 0))) || null,
     sourcePageUrl: httpsOrNull(str(formData.get("sourcePageUrl"))),
     seoTitle: str(formData.get("seoTitle")) || null, seoDescription: str(formData.get("seoDescription")) || null, status: d.status, featured: formData.get("featured") === "on",
-    lowStockThreshold: Math.max(0, Math.floor(num(formData.get("lowStockThreshold")) ?? 3)), allowBackorder: formData.get("allowBackorder") === "on",
+    lowStockThreshold: Math.max(0, Math.floor(num(formData.get("lowStockThreshold")) ?? 3)), allowBackorder: formData.get("allowBackorder") === "on" || str(formData.get("fulfilment")) === "DROPSHIP",
   };
   const vehicle = isVehicle ? {
     inventoryId: str(formData.get("inventoryId")), stockNumber: str(formData.get("stockNumber")), vin: str(formData.get("vin")).toUpperCase() || null, makeName: str(formData.get("makeName")), modelName: str(formData.get("modelName")),

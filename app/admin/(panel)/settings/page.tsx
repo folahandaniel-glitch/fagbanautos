@@ -9,7 +9,7 @@ import { PageHeader, Notice } from "@/components/admin/ui";
 export const metadata: Metadata = { title: "System settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-const GROUPS: [string, string][] = [["homepage", "Homepage text"], ["pagetext", "Page text"], ["general", "General"], ["branding", "Branding"], ["currency", "Currency"], ["vat", "VAT"], ["installment", "Installment"], ["payments", "Payments"], ["inventory", "Inventory"], ["shipping", "Shipping"], ["notifications", "Notifications"], ["pwa", "PWA"], ["seo", "SEO"], ["social", "Social media"]];
+const GROUPS: [string, string][] = [["homepage", "Homepage text"], ["pagetext", "Page text"], ["general", "General"], ["branding", "Branding"], ["currency", "Currency"], ["vat", "VAT"], ["installment", "Installment"], ["payments", "Payments"], ["inventory", "Inventory"], ["shipping", "Shipping"], ["notifications", "Notifications"], ["pwa", "PWA"], ["seo", "SEO"], ["security", "Security"], ["social", "Social media"]];
 const FINANCIAL = ["vat", "installment", "payments", "currency", "shipping"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ group?: string; notice?: string; error?: string }> }) {

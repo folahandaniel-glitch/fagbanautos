@@ -105,3 +105,43 @@ export async function addImageByLink(formData: FormData) {
   revalidatePath("/", "layout");
   back(productId, "notice", "Photo added (compressed to WebP).");
 }
+
+/** Removes photos the system found by itself (they carry a source address). Photos you uploaded are never touched. */
+async function removeAutoPhotos(productId: string) {
+  const autos = await db.productImage.findMany({ where: { productId, isPlaceholder: false, sourceUrl: { not: null } } });
+  if (autos.length) await db.productImage.deleteMany({ where: { id: { in: autos.map((a) => a.id) } } });
+  return autos.length;
+}
+
+/** Search again for one product, replacing earlier automatic photos. */
+export async function refindPhotos(formData: FormData) {
+  const productId = String(formData.get("productId"));
+  const user = await need(productId);
+  if (!(await rateLimit("img-auto", 20, 600))) back(productId, "error", "Too many searches. Please wait a few minutes.");
+  await removeAutoPhotos(productId);
+  const n = await autoPhotosForProduct(productId, 3).catch(() => 0);
+  const rest = await db.productImage.findMany({ where: { productId }, orderBy: { sortOrder: "asc" } });
+  await normalise(productId, rest.map((r) => r.id));
+  if (rest.length === 0) await db.product.update({ where: { id: productId }, data: { needsImage: true } });
+  await audit({ actorId: user.id, action: "product.image_refind", targetType: "Product", targetId: productId, after: { added: n } });
+  revalidatePath("/", "layout");
+  back(productId, n ? "notice" : "error", n ? `Found ${n} new photo${n === 1 ? "" : "s"}.` : "No suitable photo was found. The illustration stays until you upload one.");
+}
+
+/** Go back to the generated illustration and stop searching for this product. */
+export async function useIllustration(formData: FormData) {
+  const productId = String(formData.get("productId"));
+  const user = await need(productId);
+  await removeAutoPhotos(productId);
+  const p = await db.product.findUniqueOrThrow({ where: { id: productId }, include: { vehicle: true, category: true, brand: true } });
+  if ((await db.productImage.count({ where: { productId } })) === 0) {
+    const url = p.vehicle
+      ? `/api/placeholder?kind=vehicle&make=${encodeURIComponent(p.vehicle.makeName)}&model=${encodeURIComponent(p.vehicle.modelName)}&year=${p.vehicle.year}&colour=${encodeURIComponent(p.vehicle.colour ?? "")}&i=1`
+      : `/api/placeholder?kind=product&label=${encodeURIComponent(p.category?.name ?? p.name.slice(0, 30))}&brand=${encodeURIComponent(p.brand?.name ?? "")}`;
+    await db.productImage.create({ data: { productId, url, alt: `${p.name} (illustration)`, isPlaceholder: true } });
+  }
+  await db.product.update({ where: { id: productId }, data: { needsImage: false, photoCheckedAt: new Date() } });
+  await audit({ actorId: user.id, action: "product.image_illustration", targetType: "Product", targetId: productId });
+  revalidatePath("/", "layout");
+  back(productId, "notice", "Using the generated illustration. Automatic search is off for this product.");
+}

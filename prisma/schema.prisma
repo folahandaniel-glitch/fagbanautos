@@ -246,6 +246,10 @@ model Product {
   allowBackorder Boolean      @default(false)
   isDemo        Boolean       @default(false)
   needsImage    Boolean       @default(false)
+  fulfilment    String        @default("STOCK") // STOCK = sold from our own stock; DROPSHIP = supplied and shipped by a partner company
+  dropshipPartner String?
+  dropshipLeadDays Int?
+  photoCheckedAt DateTime? // last time the automatic photo finder looked at this listing
   sourcePageUrl String? // the product page on the vendor website; the photo finder reads pictures from it
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
